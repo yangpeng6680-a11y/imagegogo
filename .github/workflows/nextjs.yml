@@ -17,11 +17,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Downgrade npm to v9 (avoid v10 exit handler bug)
-        run: npm install -g npm@9 && npm --version
-
       - name: Install dependencies
-        run: npm install
+        run: npm install --registry=https://registry.npmjs.org/
 
       - name: Build
         run: npm run build
