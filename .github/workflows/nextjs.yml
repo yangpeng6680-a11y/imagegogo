@@ -12,17 +12,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          corepack-enabled: true
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
 
       - name: Build
-        run: yarn build
+        run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
