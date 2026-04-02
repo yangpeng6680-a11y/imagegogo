@@ -1,12 +1,23 @@
-// Added by github-ci:Next.js 14 ~ Cloudflare Pages | Static Export
-//
-if (process.env.NODE_ENV === undefined) {
-  import "@cloudflare/next-on-pages";
-}
-
-module.exports = {
-  output: "export",
-  images: {
-    unoptimized: true,
+{
+  "name": "image-transformer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-};
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.0.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.0"
+  }
+}
