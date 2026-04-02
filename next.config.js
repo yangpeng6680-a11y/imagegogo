@@ -2,6 +2,7 @@
 const nextConfig = {
   output: "export",
   basePath: "/imagegogo",
+  distDir: "docs",
   images: {
     unoptimized: true,
   },
