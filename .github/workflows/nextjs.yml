@@ -16,18 +16,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          corepack-enabled: true
 
       - name: Install dependencies
-        run: |
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            npm install --loglevel=error && echo "Success!" && break
-            echo "Failed, retrying in 5s..."
-            sleep 5
-          done
+        run: yarn install
 
       - name: Build
-        run: npm run build
+        run: yarn build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
