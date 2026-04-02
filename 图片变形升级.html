@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>🌸 批量图片拉伸编辑器 (带背景合成)</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #ffd6e7, #ffb6c1); padding: 20px; min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { color: #ff6b9d; text-align: center; margin-bottom: 25px; font-weight: 700; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+/* 卡片样式 */
+.card { background: rgba(255, 255, 255, 0.9); border-radius: 20px; box-shadow: 0 8px 32px rgba(252, 108, 133, 0.3); padding: 25px; margin-bottom: 25px; backdrop-filter: blur(10px); border: 2px solid rgba(255, 182, 193, 0.3); }
+.card h3 { color: #ff6b9d; margin-bottom: 20px; font-weight: 600; font-size: 22px; display: flex; align-items: center; }
+.card h3::before { content: "🌸"; margin-right: 10px; font-size: 20px; }
+
+/* 背景与上传区域样式 */
+.upload-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.upload-status { color: #ff6b9d; font-size: 14px; padding: 8px 16px; background-color: #ffeef2; border-radius: 16px; font-weight: 600; box-shadow: 0 2px 8px rgba(255,107,157,0.2); }
+.upload-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media(min-width: 768px) { .upload-grid { grid-template-columns: 1fr 1fr; } }
+
+.upload-area { border: 3px dashed #ffb6c1; border-radius: 16px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(255, 240, 245, 0.5); display: flex; flex-direction: column; justify-content: center; height: 100%; min-height: 180px;}
+.upload-area:hover { border-color: #ff6b9d; background-color: #fff5f8; transform: translateY(-2px); }
+.upload-area input { display: none; }
+.upload-icon { font-size: 40px; color: #ff6b9d; margin-bottom: 10px; }
+.upload-text h4 { color: #ff6b9d; font-weight: 600; font-size: 16px; margin-bottom: 6px; }
+.upload-text p { color: #ff9eb5; font-size: 13px; }
+
+/* 缩略图容器 */
+.thumbnail-container { background: #fff5f8; border-radius: 12px; padding: 15px; margin-top: 20px; border: 1px solid #ffeef2; }
+.thumbnail-title { font-size: 14px; color: #ff8aa7; margin-bottom: 10px; font-weight: 600; }
+.thumbnails { display: flex; flex-wrap: wrap; gap: 10px; max-height: 160px; overflow-y: auto; }
+.thumbnail-item { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid #ffb6c1; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+
+/* 背景控制区 */
+.bg-control-box { background: linear-gradient(135deg, #fff, #fff5f8); border: 2px solid #ffb6c1; border-radius: 16px; padding: 20px; height: 100%; }
+.toggle-container { display: flex; align-items: center; margin-bottom: 15px; }
+/* 开关样式 */
+.switch { position: relative; display: inline-block; width: 50px; height: 26px; margin-right: 12px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ffcce0; transition: .4s; border-radius: 26px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #ff6b9d; }
+input:checked + .slider:before { transform: translateX(24px); }
+.toggle-label { color: #ff6b9d; font-weight: 700; font-size: 16px; cursor: pointer; }
+
+/* 调节区域样式 */
+.adjustment-container { display: flex; flex-direction: column; align-items: center; }
+.image-canvas-wrapper { position: relative; margin: 0 auto; max-width: 100%; box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2); border-radius: 12px; }
+.canvas-container { position: relative; display: inline-block; }
+.image-canvas { display: block; background-color: #fff5f8; border-radius: 12px; }
+/* 棋盘格背景(用来显示透明度) */
+.transparent-bg { background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%, #eee 100%), linear-gradient(45deg, #eee 25%, white 25%, white 75%, #eee 75%, #eee 100%); background-size: 20px 20px; background-position: 0 0, 10px 10px; }
+
+.control-point { position: absolute; width: 20px; height: 20px; border-radius: 50%; background-color: #ff6b9d; border: 3px solid white; cursor: move; box-shadow: 0 3px 8px rgba(255, 107, 157, 0.6); z-index: 10; transition: transform 0.2s, background-color 0.2s; }
+.control-point:hover { transform: scale(1.3); }
+.control-point.dragging { background-color: #ff528a; box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.3); }
+.control-point.top-left { transform: translate(-50%, -50%); }
+.control-point.top-right { transform: translate(50%, -50%); }
+.control-point.bottom-left { transform: translate(-50%, 50%); }
+.control-point.bottom-right { transform: translate(50%, 50%); }
+
+/* 数值调节面板 */
+.numeric-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 25px; width: 100%; }
+.corner-control-group { background: #fff5f8; padding: 18px; border-radius: 16px; border: 2px solid #ffeef2; transition: all 0.3s; }
+.corner-control-group:hover { border-color: #ffb6c1; }
+.corner-title { color: #ff6b9d; font-weight: 600; margin-bottom: 12px; font-size: 16px; text-align: center; }
+.coordinate-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.input-group { display: flex; flex-direction: column; }
+.input-group label { color: #ff8aa7; font-size: 13px; margin-bottom: 6px; font-weight: 500; }
+.input-group input { padding: 10px 14px; border: 2px solid #ffb6c1; border-radius: 10px; font-size: 14px; background: white; color: #ff6b9d; font-weight: 500; }
+.input-group input:focus { outline: none; border-color: #ff6b9d; box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2); }
+
+/* 预览和操作按钮 */
+.preview-actions { display: flex; justify-content: center; gap: 18px; margin-top: 25px; flex-wrap: wrap; }
+.action-btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; border-radius: 14px; text-decoration: none; font-size: 16px; font-weight: 700; transition: all 0.3s; min-width: 160px; border: none; cursor: pointer; }
+.download-all-btn { background: linear-gradient(135deg, #ff6b9d, #ff8aa7); color: white; box-shadow: 0 6px 16px rgba(255, 107, 157, 0.4); }
+.download-all-btn:hover { background: linear-gradient(135deg, #ff528a, #ff7595); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(255, 107, 157, 0.5); }
+.reset-btn { background: linear-gradient(135deg, #fff, #ffeef2); color: #ff6b9d; box-shadow: 0 6px 16px rgba(255, 182, 193, 0.4); border: 2px solid #ffb6c1; }
+.reset-btn:hover { background: linear-gradient(135deg, #fff, #ffcce0); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(255, 182, 193, 0.5); }
+.tip-text { color: #ff8aa7; font-size: 14px; text-align: center; padding: 10px; font-weight: 600; margin-top: 10px;}
+
+@media (max-width: 768px) {
+  .container { padding: 10px; }
+  h1 { font-size: 24px; }
+  .card { padding: 20px; }
+  .numeric-controls { grid-template-columns: 1fr; }
+  .preview-actions { flex-direction: column; align-items: center; }
+  .action-btn { width: 100%; max-width: 250px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🌸 批量图片拉伸编辑器 🌸</h1>
+
+  <div class="card">
+    <div class="upload-header">
+      <h3>📁 准备素材</h3>
+      <div class="upload-status" id="uploadStatus">当前未选择图片</div>
+    </div>
+    
+    <div class="upload-grid">
+      <div class="bg-control-box">
+        <div class="toggle-container">
+          <label class="switch">
+            <input type="checkbox" id="enableBgToggle">
+            <span class="slider"></span>
+          </label>
+          <label class="toggle-label" for="enableBgToggle">启用背景图底板</label>
+        </div>
+        
+        <div id="bgUploadSection" style="display: none; height: calc(100% - 40px);">
+          <label class="upload-area" for="bgUpload" id="bgUploadArea">
+            <input type="file" id="bgUpload" accept="image/jpeg,image/png">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">
+              <h4 id="bgUploadTitle">上传背景底图</h4>
+              <p>合成时将以背景尺寸为最终画布</p>
+            </div>
+          </label>
+        </div>
+        <div id="bgDisabledHint" style="color:#ffb6c1; font-size: 14px; margin-top: 10px;">
+          开启后可上传底图，前景图将合成在底图上。
+        </div>
+      </div>
+
+      <div>
+        <label class="upload-area" for="imageUpload" id="fgUploadArea">
+          <input type="file" id="imageUpload" accept="image/jpeg,image/png" multiple>
+          <div class="upload-icon">🎀</div>
+          <div class="upload-text">
+            <h4>上传需要拉伸的图片</h4>
+            <p>支持多选，批量应用相同形变</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="thumbnail-container" id="thumbnailContainer" style="display: none;">
+      <div class="thumbnail-title">已上传图片队列：</div>
+      <div class="thumbnails" id="thumbnailsBox"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>✨ 四角拉伸调节 ✨</h3>
+    <div class="adjustment-container">
+      <div class="image-canvas-wrapper transparent-bg">
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="imageCanvas" class="image-canvas" width="400" height="300"></canvas>
+          <div class="control-point top-left" id="topLeft" style="left: 0; top: 0;"></div>
+          <div class="control-point top-right" id="topRight" style="left: 400px; top: 0;"></div>
+          <div class="control-point bottom-left" id="bottomLeft" style="left: 0; top: 300px;"></div>
+          <div class="control-point bottom-right" id="bottomRight" style="left: 400px; top: 300px;"></div>
+        </div>
+      </div>
+      
+      <div class="numeric-controls">
+        <div class="corner-control-group">
+          <div class="corner-title">↖️ 左上角</div>
+          <div class="coordinate-inputs">
+            <div class="input-group">
+              <label for="tlX">X坐标:</label>
+              <input type="number" id="tlX" min="0" step="1">
+            </div>
+            <div class="input-group">
+              <label for="tlY">Y坐标:</label>
+              <input type="number" id="tlY" min="0" step="1">
+            </div>
+          </div>
+        </div>
+        
+        <div class="corner-control-group">
+          <div class="corner-title">↗️ 右上角</div>
+          <div class="coordinate-inputs">
+            <div class="input-group">
+              <label for="trX">X坐标:</label>
+              <input type="number" id="trX" min="0" step="1">
+            </div>
+            <div class="input-group">
+              <label for="trY">Y坐标:</label>
+              <input type="number" id="trY" min="0" step="1">
+            </div>
+          </div>
+        </div>
+        
+        <div class="corner-control-group">
+          <div class="corner-title">↙️ 左下角</div>
+          <div class="coordinate-inputs">
+            <div class="input-group">
+              <label for="blX">X坐标:</label>
+              <input type="number" id="blX" min="0" step="1">
+            </div>
+            <div class="input-group">
+              <label for="blY">Y坐标:</label>
+              <input type="number" id="blY" min="0" step="1">
+            </div>
+          </div>
+        </div>
+        
+        <div class="corner-control-group">
+          <div class="corner-title">↘️ 右下角</div>
+          <div class="coordinate-inputs">
+            <div class="input-group">
+              <label for="brX">X坐标:</label>
+              <input type="number" id="brX" min="0" step="1">
+            </div>
+            <div class="input-group">
+              <label for="brY">Y坐标:</label>
+              <input type="number" id="brY" min="0" step="1">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <p class="tip-text" id="dragTipText">拖动四个角点或输入数值来精确拉伸图片形状（不可超出当前画布）</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>💖 批量导出 💖</h3>
+    <div class="tip-text">调节完成后，一键高清生成并下载所有合成图片</div>
+    <div class="preview-actions">
+      <a href="#" id="downloadAllBtn" class="action-btn download-all-btn">📥 批量下载处理结果</a>
+      <a href="#" id="resetBtn" class="action-btn reset-btn">🔄 重置形变</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= 全局状态 =================
+let uploadedImages = []; // 待拉伸的前景图片队列
+let currentImageObj = null; // 当前预览的前景图片对象
+let backgroundImageObj = null; // 背景图片对象
+let useBackground = false; // 是否开启了背景图
+
+// 画布尺寸相关
+let originalCanvasWidth = 400; 
+let originalCanvasHeight = 300;
+
+// 交互相关
+let isDragging = false; 
+let dragPoint = null; 
+let offsetX = 0, offsetY = 0; 
+
+// ================= 初始化 =================
+document.addEventListener('DOMContentLoaded', function() {
+  // 背景开关监听
+  const enableBgToggle = document.getElementById('enableBgToggle');
+  enableBgToggle.addEventListener('change', function(e) {
+    useBackground = e.target.checked;
+    document.getElementById('bgUploadSection').style.display = useBackground ? 'block' : 'none';
+    document.getElementById('bgDisabledHint').style.display = useBackground ? 'none' : 'block';
+    updateCanvasSizeAndReset();
+  });
+
+  // 背景图上传监听
+  document.getElementById('bgUpload').addEventListener('change', handleBgUpload);
+  
+  // 批量图片上传监听
+  document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+  
+  // 拖拽上传支持
+  setupDragAndDrop('fgUploadArea', document.getElementById('imageUpload'));
+  setupDragAndDrop('bgUploadArea', document.getElementById('bgUpload'));
+  
+  initControlPoints();
+  initNumericControls();
+  initButtons();
+});
+
+// 拖拽功能封装
+function setupDragAndDrop(areaId, inputElement) {
+  const area = document.getElementById(areaId);
+  area.addEventListener('dragover', e => {
+    e.preventDefault();
+    area.style.borderColor = '#ff6b9d';
+    area.style.backgroundColor = '#fff5f8';
+  });
+  area.addEventListener('dragleave', () => {
+    area.style.borderColor = '#ffb6c1';
+    area.style.backgroundColor = 'rgba(255, 240, 245, 0.5)';
+  });
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.style.borderColor = '#ffb6c1';
+    area.style.backgroundColor = 'rgba(255, 240, 245, 0.5)';
+    if (e.dataTransfer.files.length > 0) {
+      inputElement.files = e.dataTransfer.files;
+      inputElement.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
+// ================= 图片上传与处理 =================
+
+// 处理背景图上传
+function handleBgUpload(e) {
+  const file = e.target.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    backgroundImageObj = new Image();
+    backgroundImageObj.onload = function() {
+      document.getElementById('bgUploadTitle').innerText = '✅ 已加载背景图';
+      updateCanvasSizeAndReset();
+    };
+    backgroundImageObj.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 处理前景图批量上传
+function handleImageUpload(e) {
+  const files = e.target.files;
+  const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (validFiles.length === 0) return;
+  
+  let loadedCount = 0;
+  validFiles.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const imageData = {
+        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        originalSrc: evt.target.result
+      };
+      
+      uploadedImages.push(imageData);
+      
+      // 第一张图用来做预览
+      if (uploadedImages.length === 1 && !currentImageObj) {
+        currentImageObj = new Image();
+        currentImageObj.onload = updateCanvasSizeAndReset;
+        currentImageObj.src = imageData.originalSrc;
+      }
+      
+      loadedCount++;
+      if (loadedCount === validFiles.length) {
+        updateUploadUI();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// 更新UI（计数与缩略图）
+function updateUploadUI() {
+  const uploadStatus = document.getElementById('uploadStatus');
+  uploadStatus.innerHTML = `已准备：<strong>${uploadedImages.length}</strong> 张需拉伸图片`;
+  
+  const container = document.getElementById('thumbnailContainer');
+  const box = document.getElementById('thumbnailsBox');
+  container.style.display = uploadedImages.length > 0 ? 'block' : 'none';
+  
+  box.innerHTML = '';
+  uploadedImages.forEach(img => {
+    const el = document.createElement('img');
+    el.src = img.originalSrc;
+    el.className = 'thumbnail-item';
+    el.title = img.name;
+    box.appendChild(el);
+  });
+}
+
+// ================= 画布计算与控制点逻辑 =================
+
+// 根据状态重新计算画布大小并重置控制点
+function updateCanvasSizeAndReset() {
+  const canvas = document.getElementById('imageCanvas');
+  const maxWidth = 500;
+  const maxHeight = 400;
+  
+  let targetW = 400;
+  let targetH = 300;
+
+  // 1. 确定画布原始分辨率基准
+  if (useBackground && backgroundImageObj) {
+    targetW = backgroundImageObj.width;
+    targetH = backgroundImageObj.height;
+  } else if (currentImageObj) {
+    targetW = currentImageObj.width;
+    targetH = currentImageObj.height;
+  }
+
+  // 2. 计算缩放后的显示尺寸（用于Web预览）
+  let width = targetW;
+  let height = targetH;
+  if (width > maxWidth) {
+    height = height * (maxWidth / width);
+    width = maxWidth;
+  }
+  if (height > maxHeight) {
+    width = width * (maxHeight / height);
+    height = maxHeight;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  originalCanvasWidth = width;
+  originalCanvasHeight = height;
+
+  // 3. 更新输入框的最大值限制
+  ['tlX', 'trX', 'blX', 'brX'].forEach(id => document.getElementById(id).max = Math.floor(width));
+  ['tlY', 'trY', 'blY', 'brY'].forEach(id => document.getElementById(id).max = Math.floor(height));
+
+  resetControlPoints();
+  redrawCanvas();
+}
+
+// 重置控制点（修改为：以原比例撑满画布的某个方向，并精准贴合图片四角）
+function resetControlPoints() {
+  const canvas = document.getElementById('imageCanvas');
+  let tlx, tly, trx, try_, blx, bly, brx, bry;
+
+  if (currentImageObj) {
+    // 核心改动：计算缩放比例，使其"撑满"画布的宽度或高度（原比例最大化展示）
+    const scale = Math.min(canvas.width / currentImageObj.width, canvas.height / currentImageObj.height);
+    const drawW = currentImageObj.width * scale;
+    const drawH = currentImageObj.height * scale;
+    
+    // 居中放置，控制点精准绑定在图片边缘
+    tlx = (canvas.width - drawW) / 2;
+    tly = (canvas.height - drawH) / 2;
+    trx = tlx + drawW;
+    try_ = tly;
+    blx = tlx;
+    bly = tly + drawH;
+    brx = trx;
+    bry = bly;
+  } else {
+    // 无图片时的默认占位
+    tlx = 0; tly = 0;
+    trx = canvas.width; try_ = 0;
+    blx = 0; bly = canvas.height;
+    brx = canvas.width; bry = canvas.height;
+  }
+
+  document.getElementById('topLeft').style.left = tlx + 'px';
+  document.getElementById('topLeft').style.top = tly + 'px';
+  document.getElementById('topRight').style.left = trx + 'px';
+  document.getElementById('topRight').style.top = try_ + 'px';
+  document.getElementById('bottomLeft').style.left = blx + 'px';
+  document.getElementById('bottomLeft').style.top = bly + 'px';
+  document.getElementById('bottomRight').style.left = brx + 'px';
+  document.getElementById('bottomRight').style.top = bry + 'px';
+
+  updateNumericInputsFromPoints();
+}
+
+// 初始化控制点拖拽
+function initControlPoints() {
+  const points = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+  
+  points.forEach(pointId => {
+    const point = document.getElementById(pointId);
+    point.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      dragPoint = pointId;
+      point.classList.add('dragging');
+      const rect = point.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging || !dragPoint) return;
+    
+    const container = document.getElementById('canvasContainer');
+    const containerRect = container.getBoundingClientRect();
+    const canvas = document.getElementById('imageCanvas');
+    
+    let x = e.clientX - containerRect.left - offsetX;
+    let y = e.clientY - containerRect.top - offsetY;
+    
+    // 强制限制在画布（即背景图）范围内，绝不越界
+    x = Math.max(0, Math.min(x, canvas.width));
+    y = Math.max(0, Math.min(y, canvas.height));
+    
+    // 防止各点交叉
+    switch(dragPoint) {
+      case 'topLeft':
+        x = Math.min(x, parseFloat(document.getElementById('topRight').style.left) || canvas.width);
+        y = Math.min(y, parseFloat(document.getElementById('bottomLeft').style.top) || canvas.height);
+        break;
+      case 'topRight':
+        x = Math.max(x, parseFloat(document.getElementById('topLeft').style.left) || 0);
+        y = Math.min(y, parseFloat(document.getElementById('bottomRight').style.top) || canvas.height);
+        break;
+      case 'bottomLeft':
+        x = Math.min(x, parseFloat(document.getElementById('bottomRight').style.left) || canvas.width);
+        y = Math.max(y, parseFloat(document.getElementById('topLeft').style.top) || 0);
+        break;
+      case 'bottomRight':
+        x = Math.max(x, parseFloat(document.getElementById('bottomLeft').style.left) || 0);
+        y = Math.max(y, parseFloat(document.getElementById('topRight').style.top) || 0);
+        break;
+    }
+    
+    const point = document.getElementById(dragPoint);
+    point.style.left = `${x}px`;
+    point.style.top = `${y}px`;
+    
+    updateNumericInputsFromPoints();
+    redrawCanvas();
+  });
+  
+  document.addEventListener('mouseup', function() {
+    isDragging = false;
+    if (dragPoint) {
+      document.getElementById(dragPoint).classList.remove('dragging');
+      dragPoint = null;
+    }
+  });
+}
+
+function initNumericControls() {
+  const inputs = ['tlX', 'tlY', 'trX', 'trY', 'blX', 'blY', 'brX', 'brY'];
+  inputs.forEach(inputId => {
+    document.getElementById(inputId).addEventListener('input', function() {
+      updatePointFromNumericInput(inputId);
+    });
+  });
+}
+
+function updateNumericInputsFromPoints() {
+  ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].forEach((point, i) => {
+    const el = document.getElementById(point);
+    const prefixes = ['tl', 'tr', 'bl', 'br'];
+    document.getElementById(prefixes[i] + 'X').value = Math.round(parseFloat(el.style.left));
+    document.getElementById(prefixes[i] + 'Y').value = Math.round(parseFloat(el.style.top));
+  });
+}
+
+function updatePointFromNumericInput(inputId) {
+  const canvas = document.getElementById('imageCanvas');
+  const val = parseInt(document.getElementById(inputId).value) || 0;
+  
+  let clamped = val;
+  if (inputId.includes('X')) clamped = Math.max(0, Math.min(val, canvas.width));
+  else clamped = Math.max(0, Math.min(val, canvas.height));
+  
+  document.getElementById(inputId).value = clamped;
+  
+  const map = {
+    'tlX': {id: 'topLeft', prop: 'left'}, 'tlY': {id: 'topLeft', prop: 'top'},
+    'trX': {id: 'topRight', prop: 'left'}, 'trY': {id: 'topRight', prop: 'top'},
+    'blX': {id: 'bottomLeft', prop: 'left'}, 'blY': {id: 'bottomLeft', prop: 'top'},
+    'brX': {id: 'bottomRight', prop: 'left'}, 'brY': {id: 'bottomRight', prop: 'top'}
+  };
+  
+  document.getElementById(map[inputId].id).style[map[inputId].prop] = `${clamped}px`;
+  redrawCanvas();
+}
+
+// ================= 核心绘图算法 (支持Alpha混合) =================
+
+function redrawCanvas() {
+  const canvas = document.getElementById('imageCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // 1. 清空画布并绘制背景
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (useBackground && backgroundImageObj) {
+    ctx.drawImage(backgroundImageObj, 0, 0, canvas.width, canvas.height);
+  }
+
+  if (!currentImageObj) return;
+
+  // 获取控制点坐标
+  const pts = [
+    parseFloat(document.getElementById('topLeft').style.left), parseFloat(document.getElementById('topLeft').style.top),
+    parseFloat(document.getElementById('topRight').style.left), parseFloat(document.getElementById('topRight').style.top),
+    parseFloat(document.getElementById('bottomLeft').style.left), parseFloat(document.getElementById('bottomLeft').style.top),
+    parseFloat(document.getElementById('bottomRight').style.left), parseFloat(document.getElementById('bottomRight').style.top)
+  ];
+
+  // 2. 绘制形变后的前景图叠加在背景上
+  drawPerspectiveImage(ctx, currentImageObj, 
+    0, 0, canvas.width, 0, 0, canvas.height, canvas.width, canvas.height,
+    pts[0], pts[1], pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]
+  );
+
+  // 3. 绘制辅助网格线
+  ctx.strokeStyle = 'rgba(255, 107, 157, 0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]); // 虚线更美观
+  ctx.beginPath();
+  ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]);
+  ctx.lineTo(pts[6], pts[7]); ctx.lineTo(pts[4], pts[5]);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawPerspectiveImage(ctx, img, 
+    srcX1, srcY1, srcX2, srcY2, srcX3, srcY3, srcX4, srcY4,
+    destX1, destY1, destX2, destY2, destX3, destY3, destX4, destY4) {
+  
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+  
+  // 离屏渲染原图（保持其原样铺满一个虚拟画布，用于映射采样）
+  const offscreen = document.createElement('canvas');
+  offscreen.width = width;
+  offscreen.height = height;
+  const offscreenCtx = offscreen.getContext('2d', { willReadFrequently: true });
+  offscreenCtx.clearRect(0, 0, width, height);
+  offscreenCtx.drawImage(img, 0, 0, width, height);
+  const imgData = offscreenCtx.getImageData(0, 0, width, height);
+  const data = imgData.data;
+
+  // 获取目标画布当前的像素（包含了已经画好的背景！）
+  const output = ctx.getImageData(0, 0, width, height);
+  const outData = output.data;
+
+  const minX = Math.max(0, Math.floor(Math.min(destX1, destX2, destX3, destX4)));
+  const maxX = Math.min(width, Math.ceil(Math.max(destX1, destX2, destX3, destX4)));
+  const minY = Math.max(0, Math.floor(Math.min(destY1, destY2, destY3, destY4)));
+  const maxY = Math.min(height, Math.ceil(Math.max(destY1, destY2, destY3, destY4)));
+
+  for (let y = minY; y < maxY; y++) {
+    for (let x = minX; x < maxX; x++) {
+      if (!pointInQuad(x, y, destX1, destY1, destX2, destY2, destX4, destY4, destX3, destY3)) continue;
+
+      const [u, v] = mapPointToUnitSquare(x, y, destX1, destY1, destX2, destY2, destX3, destY3, destX4, destY4);
+      const srcX = u * width;
+      const srcY = v * height;
+
+      // 双线性插值，获取原图的 [r, g, b, a]
+      const color = bilinearInterpolate(srcX, srcY, width, height, data);
+      
+      const idx = (y * width + x) * 4;
+      
+      // Alpha透明度混合计算 (前景色 Over 背景色)
+      const srcAlpha = color[3] / 255;
+      const bgAlpha = outData[idx + 3] / 255;
+      const outAlpha = srcAlpha + bgAlpha * (1 - srcAlpha);
+
+      if (outAlpha > 0) {
+        outData[idx] = Math.round((color[0] * srcAlpha + outData[idx] * bgAlpha * (1 - srcAlpha)) / outAlpha);
+        outData[idx + 1] = Math.round((color[1] * srcAlpha + outData[idx + 1] * bgAlpha * (1 - srcAlpha)) / outAlpha);
+        outData[idx + 2] = Math.round((color[2] * srcAlpha + outData[idx + 2] * bgAlpha * (1 - srcAlpha)) / outAlpha);
+        outData[idx + 3] = Math.round(outAlpha * 255);
+      }
+    }
+  }
+
+  // 直接将处理好的带有背景的像素塞回画布
+  ctx.putImageData(output, 0, 0);
+}
+
+// ---- 底层数学函数维持原样，仅为 bilinearInterpolate 添加了透明通道支持 ----
+function pointInQuad(px, py, x1, y1, x2, y2, x3, y3, x4, y4) {
+  function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
+  function vec(a, b) { return [b[0]-a[0], b[1]-a[1]]; }
+  const p = [px, py];
+  const A = [x1, y1], B = [x2, y2], C = [x3, y3], D = [x4, y4];
+  const c1 = cross(vec(A,B)[0], vec(A,B)[1], vec(A,p)[0], vec(A,p)[1]);
+  const c2 = cross(vec(B,C)[0], vec(B,C)[1], vec(B,p)[0], vec(B,p)[1]);
+  const c3 = cross(vec(C,D)[0], vec(C,D)[1], vec(C,p)[0], vec(C,p)[1]);
+  const c4 = cross(vec(D,A)[0], vec(D,A)[1], vec(D,p)[0], vec(D,p)[1]);
+  return (c1 >= 0 && c2 >= 0 && c3 >= 0 && c4 >= 0) || (c1 <= 0 && c2 <= 0 && c3 <= 0 && c4 <= 0);
+}
+
+function mapPointToUnitSquare(x, y, x1, y1, x2, y2, x3, y3, x4, y4) {
+  let u = 0.5, v = 0.5;
+  for (let i = 0; i < 5; i++) {
+    const xu = (1 - v) * ((1 - u) * x1 + u * x2) + v * ((1 - u) * x3 + u * x4);
+    const yu = (1 - v) * ((1 - u) * y1 + u * y2) + v * ((1 - u) * y3 + u * y4);
+    const dxdu = (1 - v) * (x2 - x1) + v * (x4 - x3);
+    const dxdv = -(1 - u) * x1 - u * x2 + (1 - u) * x3 + u * x4;
+    const dydu = (1 - v) * (y2 - y1) + v * (y4 - y3);
+    const dydv = -(1 - u) * y1 - u * y2 + (1 - u) * y3 + u * y4;
+    const det = dxdu * dydv - dxdv * dydu;
+    if (Math.abs(det) < 1e-6) break;
+    const dx = x - xu, dy = y - yu;
+    u += (dx * dydv - dy * dxdv) / det;
+    v += (dy * dxdu - dx * dydu) / det;
+    if (u < 0) u = 0; if (u > 1) u = 1;
+    if (v < 0) v = 0; if (v > 1) v = 1;
+  }
+  return [u, v];
+}
+
+function bilinearInterpolate(x, y, width, height, data) {
+  const x1 = Math.floor(x), y1 = Math.floor(y);
+  const x2 = Math.min(x1 + 1, width - 1), y2 = Math.min(y1 + 1, height - 1);
+  const dx = x - x1, dy = y - y1;
+  
+  function getP(xi, yi) {
+    const i = (yi * width + xi) * 4;
+    return [data[i], data[i+1], data[i+2], data[i+3]];
+  }
+  const c1 = getP(x1, y1), c2 = getP(x2, y1), c3 = getP(x1, y2), c4 = getP(x2, y2);
+  
+  return [
+    lerp(lerp(c1[0], c2[0], dx), lerp(c3[0], c4[0], dx), dy),
+    lerp(lerp(c1[1], c2[1], dx), lerp(c3[1], c4[1], dx), dy),
+    lerp(lerp(c1[2], c2[2], dx), lerp(c3[2], c4[2], dx), dy),
+    lerp(lerp(c1[3], c2[3], dx), lerp(c3[3], c4[3], dx), dy) // 加入Alpha
+  ];
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+
+// ================= 批量下载功能 =================
+
+function initButtons() {
+  document.getElementById('downloadAllBtn').addEventListener('click', async function(e) {
+    e.preventDefault();
+    if (uploadedImages.length === 0) return alert('请先上传需要拉伸的图片！');
+    if (useBackground && !backgroundImageObj) return alert('你开启了底图模式，请上传一张背景图！');
+    
+    // 获取界面上归一化的控制点比例
+    const previewCanvas = document.getElementById('imageCanvas');
+    const getScale = (id, prop) => parseFloat(document.getElementById(id).style[prop]) / (prop==='left'?previewCanvas.width:previewCanvas.height);
+    
+    const ptsRatio = [
+      getScale('topLeft', 'left'), getScale('topLeft', 'top'),
+      getScale('topRight', 'left'), getScale('topRight', 'top'),
+      getScale('bottomLeft', 'left'), getScale('bottomLeft', 'top'),
+      getScale('bottomRight', 'left'), getScale('bottomRight', 'top'),
+    ];
+
+    const link = document.createElement('a');
+    document.body.appendChild(link);
+
+    // 以原图分辨率（背景分辨率或第一张图的分辨率）为基准高清导出
+    let outWidth, outHeight;
+    if (useBackground && backgroundImageObj) {
+      outWidth = backgroundImageObj.width;
+      outHeight = backgroundImageObj.height;
+    } else {
+      outWidth = currentImageObj.width;
+      outHeight = currentImageObj.height;
+    }
+
+    for (let i = 0; i < uploadedImages.length; i++) {
+      const imgData = uploadedImages[i];
+      const img = new Image();
+      img.src = imgData.originalSrc;
+      await new Promise(resolve => img.onload = resolve);
+      
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = outWidth;
+      outCanvas.height = outHeight;
+      const outCtx = outCanvas.getContext('2d');
+      
+      // 1. 画背景
+      if (useBackground && backgroundImageObj) {
+        outCtx.drawImage(backgroundImageObj, 0, 0, outWidth, outHeight);
+      }
+      
+      // 2. 将比例还原为实际高分像素并应用形变
+      drawPerspectiveImage(outCtx, img,
+        0, 0, outWidth, 0, 0, outHeight, outWidth, outHeight,
+        ptsRatio[0]*outWidth, ptsRatio[1]*outHeight,
+        ptsRatio[2]*outWidth, ptsRatio[3]*outHeight,
+        ptsRatio[4]*outWidth, ptsRatio[5]*outHeight,
+        ptsRatio[6]*outWidth, ptsRatio[7]*outHeight
+      );
+      
+      link.href = outCanvas.toDataURL('image/png', 1.0);
+      link.download = `合成_${imgData.name.replace(/\.[^/.]+$/, "")}.png`;
+      link.click();
+      
+      await new Promise(resolve => setTimeout(resolve, 200)); // 延迟防止浏览器拦截
+    }
+    
+    document.body.removeChild(link);
+    alert(`✅ 搞定！${uploadedImages.length} 张图片已全部处理并下载。`);
+  });
+  
+  document.getElementById('resetBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    updateCanvasSizeAndReset();
+  });
+}
+</script>
+</body>
+</html>
