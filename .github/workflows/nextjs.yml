@@ -16,12 +16,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: false
 
-      - name: Install dependencies (no scripts)
+      - name: Install dependencies
         run: npm install --ignore-scripts --registry=https://registry.npmjs.org/
-
-      - name: Run Next.js postinstall (download SWC binaries)
-        run: node node_modules/next/dist/bin/next-postinstall.js || true
 
       - name: Build Next.js
         run: node node_modules/next/dist/bin/next build
