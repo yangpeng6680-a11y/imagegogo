@@ -16,10 +16,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund --prefer-offline
-        timeout-minutes: 10
+      - name: Install dependencies (retry on failure)
+        run: |
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            npm install --no-audit --no-fund && echo "Success!" && break
+            echo "Failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Build
         run: npm run build
