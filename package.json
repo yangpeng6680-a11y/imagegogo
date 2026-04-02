@@ -1,23 +1,12 @@
-{
-  "name": "image-transformer",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "next": "14.2.3",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
-  },
-  "devDependencies": {
-    "autoprefixer": "10.4.19",
-    "eslint": "8.57.0",
-    "eslint-config-next": "14.2.3",
-    "postcss": "8.4.38",
-    "tailwindcss": "3.4.3"
-  }
+// Added by github-ci:Next.js 14 ~ Cloudflare Pages | Static Export
+//
+if (process.env.NODE_ENV === undefined) {
+  import "@cloudflare/next-on-pages";
 }
+
+module.exports = {
+  output: "export",
+  images: {
+    unoptimized: true,
+  },
+};
