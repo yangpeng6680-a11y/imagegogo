@@ -12,14 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Downgrade npm to v9 (avoid v10 exit handler bug)
+        run: npm install -g npm@9 && npm --version
+
       - name: Install dependencies
-        run: |
-          npm install --ignore-scripts || npm install --ignore-scripts || true
+        run: npm install
 
       - name: Build
         run: npm run build
