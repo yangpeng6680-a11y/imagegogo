@@ -16,16 +16,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: Install dependencies (retry on failure)
+      - name: Install dependencies
+        env:
+          HOME: /github/home
+          npm_config_cache: /github/home/.npm
         run: |
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            npm install --no-audit --no-fund && echo "Success!" && break
-            echo "Failed, retrying in 10s..."
-            sleep 10
-          done
+          mkdir -p "$HOME/.npm"
+          npm install --loglevel=error 2>&1 || \
+          npm install --loglevel=error 2>&1 || \
+          npm install --loglevel=error 2>&1
 
       - name: Build
         run: npm run build
