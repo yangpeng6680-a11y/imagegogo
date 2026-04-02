@@ -17,11 +17,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install --registry=https://registry.npmjs.org/
+      - name: Install dependencies (no scripts)
+        run: npm install --ignore-scripts --registry=https://registry.npmjs.org/
 
-      - name: Build
-        run: npm run build
+      - name: Run Next.js postinstall (download SWC binaries)
+        run: node node_modules/next/dist/bin/next-postinstall.js || true
+
+      - name: Build Next.js
+        run: node node_modules/next/dist/bin/next build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
