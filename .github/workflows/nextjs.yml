@@ -1,4 +1,4 @@
-name: Build and Deploy Next.js
+name: Build and Deploy Next.js to Cloudflare Pages
 
 on:
   push:
@@ -16,23 +16,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        env:
-          HOME: /github/home
-          npm_config_cache: /github/home/.npm
         run: |
-          mkdir -p "$HOME/.npm"
-          npm install --loglevel=error 2>&1 || \
-          npm install --loglevel=error 2>&1 || \
-          npm install --loglevel=error 2>&1
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            npm install --loglevel=error && echo "Success!" && break
+            echo "Failed, retrying in 5s..."
+            sleep 5
+          done
 
       - name: Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          path: out
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 4a231bf78ffa10bfebe25d64ca3fc44f
+          projectName: imagegogo
+          directory: out
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
