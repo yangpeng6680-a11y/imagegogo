@@ -34,6 +34,12 @@ export default function Home() {
 
   // 初始化
   useEffect(() => {
+    // 监听 Firebase Auth 状态
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setAuthLoading(false);
+    });
+    
     // 初始化下载链接
     if (!linkRef.current) {
       const link = document.createElement('a');
@@ -46,6 +52,7 @@ export default function Home() {
     const cleanupFg = setupDragAndDrop(fgUploadAreaRef, 'imageUpload', setIsDraggingFg);
     
     return () => {
+      unsubscribe();
       // 清理下载链接
       if (linkRef.current) {
         document.body.removeChild(linkRef.current);
