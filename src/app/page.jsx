@@ -91,6 +91,15 @@ export default function Home() {
     }
   };
 
+  // Google 登出
+  const handleGoogleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Google logout failed:', error);
+    }
+  };
+
   // 拖拽上传功能
   const setupDragAndDrop = (ref, inputId, setDraggingState) => {
     if (!ref.current) return;
@@ -831,8 +840,8 @@ export default function Home() {
     );
   }
 
-  // Not logged in - show login screen
-  if (!user) {
+  // Skip login screen if Firebase couldn't connect (user is null after timeout)
+  // This allows the app to work without login in regions where Firebase is blocked
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-100 via-white to-pink-200 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 text-center">
@@ -855,20 +864,22 @@ export default function Home() {
     );
   }
 
-  // Logged in - show main app
+  // Show main app (works with or without login)
   return (
     <div className="container">
-      {/* User info header */}
-      <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
-        <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
-        <span className="text-sm text-gray-600">{user.email}</span>
-        <button
-          onClick={handleGoogleLogout}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          退出
-        </button>
-      </div>
+      {/* User info header - only show if logged in */}
+      {user && (
+        <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
+          <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
+          <span className="text-sm text-gray-600">{user.email}</span>
+          <button
+            onClick={handleGoogleLogout}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            退出
+          </button>
+        </div>
+      )}
       <h1>🌸 批量图片拉伸编辑器 🌸</h1>
 
       <div className="card">
