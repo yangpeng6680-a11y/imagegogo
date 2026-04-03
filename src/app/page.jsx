@@ -40,6 +40,11 @@ export default function Home() {
       setAuthLoading(false);
     });
     
+    // Firebase 超时保护（5秒），避免在中国大陆无法连接 Google 服务器导致一直加载
+    const timeoutId = setTimeout(() => {
+      setAuthLoading(false);
+    }, 5000);
+    
     // 初始化下载链接
     if (!linkRef.current) {
       const link = document.createElement('a');
@@ -53,6 +58,7 @@ export default function Home() {
     
     return () => {
       unsubscribe();
+      clearTimeout(timeoutId);
       // 清理下载链接
       if (linkRef.current) {
         document.body.removeChild(linkRef.current);
