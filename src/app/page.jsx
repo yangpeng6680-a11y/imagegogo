@@ -66,8 +66,12 @@ export default function Home() {
       unsubscribe();
       clearTimeout(timeoutId);
       // 清理下载链接
-      if (linkRef.current) {
-        document.body.removeChild(linkRef.current);
+      if (linkRef.current && linkRef.current.parentNode) {
+        try {
+          document.body.removeChild(linkRef.current);
+        } catch (e) {
+          // ignore if already removed
+        }
         linkRef.current = null;
       }
       
@@ -76,6 +80,16 @@ export default function Home() {
       if (cleanupFg) cleanupFg();
     };
   }, []);
+
+  // Google 登录
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Google login failed:', error);
+      alert('登录失败: ' + error.message);
+    }
+  };
 
   // 拖拽上传功能
   const setupDragAndDrop = (ref, inputId, setDraggingState) => {
