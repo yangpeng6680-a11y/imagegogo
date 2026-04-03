@@ -35,15 +35,21 @@ export default function Home() {
   // 初始化
   useEffect(() => {
     // 监听 Firebase Auth 状态
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
+        setAuthLoading(false);
+      });
+    } catch (e) {
+      console.error('Firebase Auth error:', e);
       setAuthLoading(false);
-    });
+    }
     
-    // Firebase 超时保护（5秒），避免在中国大陆无法连接 Google 服务器导致一直加载
+    // Firebase 超时保护（3秒），避免在中国大陆无法连接 Google 服务器导致一直加载
     const timeoutId = setTimeout(() => {
       setAuthLoading(false);
-    }, 5000);
+    }, 3000);
     
     // 初始化下载链接
     if (!linkRef.current) {
