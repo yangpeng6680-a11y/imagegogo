@@ -17,11 +17,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install yarn
+        run: npm install -g yarn
+
       - name: Install dependencies
-        run: npm install --ignore-scripts --registry=https://registry.npmjs.org/
+        run: yarn install --ignore-scripts
 
       - name: Build Next.js
-        run: node node_modules/next/dist/bin/next build
+        run: yarn build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
