@@ -579,7 +579,19 @@ export default function Home() {
 
     // === 使用次数限制 ===
     const isLoggedIn = !!localStorage.getItem('google_access_token');
-    const isPro = localStorage.getItem('is_pro') === 'true';
+    // 检查 Pro 是否过期
+    const storedProType = localStorage.getItem('pro_type');
+    const storedExpireAt = localStorage.getItem('pro_expire_at');
+    let isPro = localStorage.getItem('is_pro') === 'true';
+    if (isPro && storedExpireAt) {
+      if (Date.now() > parseInt(storedExpireAt)) {
+        // 已过期，降级为免费用户
+        isPro = false;
+        localStorage.setItem('is_pro', 'false');
+        localStorage.removeItem('pro_type');
+        localStorage.removeItem('pro_expire_at');
+      }
+    }
     const today = new Date().toDateString();
     const lastDate = localStorage.getItem('last_use_date');
     let uses = parseInt(localStorage.getItem('today_uses') || '0');
@@ -1244,11 +1256,11 @@ export default function Home() {
       </div>
 
       {/* 升级悬浮条 - 免费用户可见 */}
-      {user && !localStorage.getItem('is_pro') && (
+      {user && !isPro && (
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 px-4 shadow-lg z-50 flex items-center justify-center gap-4">
           <div className="text-sm">
             🌸 今日已使用 <strong>{localStorage.getItem('today_uses') || '0'}</strong> 次
-            {parseInt(localStorage.getItem('today_uses') || '0') >= 20 ? '，次数已用完' : ''}
+            {parseInt(localStorage.getItem('today_uses') || '0') >= 10 ? '，次数已用完' : ''}
           </div>
           <a
             href="/pricing"

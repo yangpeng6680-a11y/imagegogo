@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [nickname, setNickname] = useState('');
   const [todayUses, setTodayUses] = useState(0);
   const [isPro, setIsPro] = useState(false);
+  const [proType, setProType] = useState('');
+  const [expireAt, setExpireAt] = useState(0);
   const [savingNickname, setSavingNickname] = useState(false);
 
   useEffect(() => {
@@ -50,9 +52,19 @@ export default function ProfilePage() {
 
     // 获取用户信息
     const storedUser = localStorage.getItem('user_profile');
-    const storedIsPro = localStorage.getItem('is_pro') === 'true';
+    let storedIsPro = localStorage.getItem('is_pro') === 'true';
+    const storedProType = localStorage.getItem('pro_type');
+    const storedExpireAt = localStorage.getItem('pro_expire_at');
     const storedTodayUses = parseInt(localStorage.getItem('today_uses') || '0');
     const lastUseDate = localStorage.getItem('last_use_date');
+
+    // 检查 Pro 是否过期
+    if (storedIsPro && storedExpireAt && Date.now() > parseInt(storedExpireAt)) {
+      storedIsPro = false;
+      localStorage.setItem('is_pro', 'false');
+      localStorage.removeItem('pro_type');
+      localStorage.removeItem('pro_expire_at');
+    }
 
     // 检查是否是今天
     const today = new Date().toDateString();
@@ -68,6 +80,8 @@ export default function ProfilePage() {
       setUser(profile);
       setNickname(profile.displayName || '');
       setIsPro(storedIsPro);
+      setProType(storedProType || '');
+      setExpireAt(storedExpireAt ? parseInt(storedExpireAt) : 0);
     }
 
     // 加载历史记录
@@ -164,7 +178,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-4">
                 {isPro ? (
                   <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full font-medium">
-                    ⭐ Pro 用户
+                    ⭐ {proType === 'daily' ? '日卡' : proType === 'monthly' ? '月卡' : '年卡'} Pro
                   </span>
                 ) : (
                   <span className="px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
@@ -204,9 +218,15 @@ export default function ProfilePage() {
             <div className="mt-6 p-4 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl text-white">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">⭐</span>
-                <span className="font-bold">Pro 用户</span>
+                <span className="font-bold">
+                  {proType === 'daily' ? '日卡' : proType === 'monthly' ? '月卡' : '年卡'} Pro 用户
+                </span>
               </div>
-              <p className="text-pink-100 text-sm">无限次使用，无水印，专属批量处理</p>
+              <p className="text-pink-100 text-sm">
+                {expireAt > 0
+                  ? `到期时间：${new Date(expireAt).toLocaleString('zh-CN')}`
+                  : '无限次使用，无水印，专属批量处理'}
+              </p>
             </div>
           )}
         </div>

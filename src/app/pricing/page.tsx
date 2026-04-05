@@ -12,68 +12,13 @@ declare global {
 const PAYPAL_CLIENT_ID = 'ATdCfgFHkoQzMXaY_yVmHAXMCLPe_HcpK0O7_gg3Ys6aDzUx-RxKg33791GG5zP9IKyqMxp5UUmIz18Q';
 
 // PayPal Billing Plan IDs (正式环境)
-const BILLING_PLAN_ID_MONTHLY = 'P-17A9610673729182RNHJIGVY';
-const BILLING_PLAN_ID_YEARLY = 'P-3M448585GB9014146NHJIGXY';
-
-const PLANS = [
-  {
-    name: '免费版',
-    price: '¥0',
-    period: '永久',
-    tagline: '适合体验和轻度使用',
-    color: 'gray',
-    colorBg: 'bg-gray-50',
-    colorBorder: 'border-gray-200',
-    colorText: 'text-gray-800',
-    colorBtn: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-    features: [
-      { text: '每天 20 次免费使用', included: true },
-      { text: '输出图片带水印', included: true },
-      { text: '7 天历史记录', included: true },
-      { text: '最多 5 个收藏预设', included: true },
-      { text: '单张图片处理', included: true },
-      { text: '批量处理（多张）', included: false },
-      { text: '无限使用次数', included: false },
-      { text: '永久历史记录', included: false },
-    ],
-    cta: '免费开始',
-    ctaAction: () => { window.location.href = '/'; },
-    highlight: false,
-  },
-  {
-    name: 'Pro',
-    price: '$2.99',
-    period: '/月',
-    tagline: '适合电商、设计、自媒体',
-    color: 'pink',
-    colorBg: 'bg-gradient-to-br from-pink-50 to-rose-50',
-    colorBorder: 'border-pink-300',
-    colorText: 'text-pink-800',
-    colorBtn: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-200',
-    badge: '最受欢迎',
-    features: [
-      { text: '无限次使用', included: true },
-      { text: '输出无水印', included: true },
-      { text: '永久历史记录', included: true },
-      { text: '无限收藏预设', included: true },
-      { text: '单张图片处理', included: true },
-      { text: '批量处理（最多 50 张）', included: true },
-      { text: '优先处理队列', included: true },
-      { text: '专属客服支持', included: true },
-    ],
-    cta: '立即订阅',
-    ctaAction: 'paypal_monthly',
-    highlight: true,
-    yearlyPrice: '$29.99',
-    yearlyPeriod: '/年',
-    yearlySaving: '省 $5.89',
-  },
-];
+const BILLING_PLAN_DAILY = 'P-13K78363HU487850SNHJIL5Y';
+const BILLING_PLAN_MONTHLY = 'P-17A9610673729182RNHJIGVY';
+const BILLING_PLAN_YEARLY = 'P-64M55248BS962763LNHJIMAI';
 
 export default function PricingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isPro, setIsPro] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [activePlan, setActivePlan] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [paypalLoaded, setPaypalLoaded] = useState(false);
   const [paypalError, setPaypalError] = useState(false);
@@ -83,97 +28,60 @@ export default function PricingPage() {
   useEffect(() => {
     const token = localStorage.getItem('google_access_token');
     setIsLoggedIn(!!token);
-    setIsPro(localStorage.getItem('is_pro') === 'true');
   }, []);
 
   // 加载 PayPal SDK
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const script = document.createElement('script');
     script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
     script.async = true;
-    script.onload = () => {
-      setPaypalLoaded(true);
-    };
-    script.onerror = () => {
-      setPaypalError(true);
-    };
+    script.onload = () => setPaypalLoaded(true);
+    script.onerror = () => setPaypalError(true);
     document.body.appendChild(script);
-
     return () => {
       const existingScript = document.querySelector(`script[src*="paypal.com/sdk"]`);
       if (existingScript) existingScript.remove();
     };
   }, []);
 
-  // 渲染 PayPal 订阅按钮
+  // 渲染 PayPal 按钮
   useEffect(() => {
     if (!paypalLoaded || subscribed.current || !window.paypal || !paypalContainerRef.current) return;
 
-    const planId = billingCycle === 'monthly' ? BILLING_PLAN_ID_MONTHLY : BILLING_PLAN_ID_YEARLY;
+    const planId = activePlan === 'daily' ? BILLING_PLAN_DAILY
+      : activePlan === 'monthly' ? BILLING_PLAN_MONTHLY
+      : BILLING_PLAN_YEARLY;
 
-    // 清理旧按钮
     const container = paypalContainerRef.current;
     container.innerHTML = '';
 
     try {
       window.paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color: 'gold',
-          shape: 'rect',
-          label: 'subscribe',
-        },
+        style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'subscribe' },
         createSubscription: (data: any, actions: any) => {
-          return actions.subscription.create({
-            plan_id: planId,
-          });
+          return actions.subscription.create({ plan_id: planId });
         },
-        onApprove: (data: any, actions: any) => {
-          // 订阅获批准，跳转到成功页
+        onApprove: (data: any) => {
           subscribed.current = true;
-          const returnUrl = `${window.location.origin}/paypal/success?subscription_id=${data.subscriptionID}&status=ACTIVE`;
+          const returnUrl = `${window.location.origin}/paypal/success?subscription_id=${data.subscriptionID}&status=ACTIVE&plan=${activePlan}`;
           window.location.href = returnUrl;
         },
         onError: (err: any) => {
           console.error('PayPal error:', err);
           alert('支付出错，请重试。');
         },
-        onCancel: () => {
-          // 用户取消
-        },
       }).render(container);
     } catch (e) {
       console.error('PayPal render error:', e);
     }
-  }, [paypalLoaded, billingCycle]);
+  }, [paypalLoaded, activePlan]);
 
   const FAQS = [
-    {
-      q: '免费次数用完了怎么办？',
-      a: '每天凌晨零点会重置免费次数。如果当天的次数已经用完，可以等到第二天继续使用，或者升级到 Pro 版本解锁无限次使用。',
-    },
-    {
-      q: '升级 Pro 后可以开发票吗？',
-      a: '目前支持开具普通发票。升级 Pro 后请联系客服，提供您的邮箱和发票抬头，我们会尽快为您处理。',
-    },
-    {
-      q: '水印是什么样的？会影响图片效果吗？',
-      a: '免费版本输出的图片右下角会有一个小的粉色文字水印（"图片变形编辑器"）。水印不会影响图片的主体内容，只占很小一块区域。',
-    },
-    {
-      q: '批量处理有什么限制？',
-      a: 'Pro 用户每次最多可以同时处理 50 张图片，所有图片会应用相同的变形参数。这对于电商批量修改商品图非常有用。',
-    },
-    {
-      q: '我的图片和数据会被保存吗？',
-      a: '所有图片处理都在您的浏览器本地完成，我们不会上传或保存您的原始图片。只有您主动保存的历史记录元数据（参数、缩略图）会存储在本地。',
-    },
-    {
-      q: '如何取消订阅？',
-      a: '您可以随时取消订阅，取消后当前付费周期内仍可继续使用 Pro 功能，次月不会自动扣款。取消订阅请在个人中心操作。',
-    },
+    { q: '日卡和月卡/年卡有什么区别？', a: '日卡是 24 小时无限使用，到期后自动降级为免费用户，不自动续费。月卡和年卡是订阅制，到期前会自动续费，可随时取消。' },
+    { q: '水印是什么样的？', a: '免费版本输出的图片右下角会有一个小的粉色文字水印。升级到 Pro 后，输出图片完全无水印。' },
+    { q: '如何取消订阅？', a: '登录后进入「个人中心」→「账户设置」，可以随时取消订阅。取消后当前付费周期内仍可使用 Pro 功能。' },
+    { q: '我的图片会被保存吗？', a: '所有图片处理都在您的浏览器本地完成（使用 Canvas API），我们服务器不会上传或存储您的任何原始图片。' },
   ];
 
   return (
@@ -186,9 +94,7 @@ export default function PricingPage() {
             <h1 className="text-lg font-bold text-gray-800">定价方案</h1>
           </div>
           {isLoggedIn && (
-            <Link href="/profile" className="text-sm text-pink-500 hover:text-pink-600 font-medium">
-              个人中心 →
-            </Link>
+            <Link href="/profile" className="text-sm text-pink-500 hover:text-pink-600 font-medium">个人中心 →</Link>
           )}
         </div>
       </div>
@@ -196,139 +102,129 @@ export default function PricingPage() {
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* Hero */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-            🌸 选择适合你的方案
-          </h2>
-          <p className="text-gray-500 text-lg max-w-xl mx-auto">
-            无论你是偶尔使用还是专业设计师，都能找到合适的方案
-          </p>
-
-          {isLoggedIn && !isPro && (
-            <div className="mt-6 inline-flex items-center gap-2 bg-white rounded-full p-1 shadow-sm border border-gray-100">
-              <button
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  billingCycle === 'monthly' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                月付 $2.99
-              </button>
-              <button
-                onClick={() => setBillingCycle('yearly')}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  billingCycle === 'yearly' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                年付 $29.99 <span className="text-pink-200">省 $5.89</span>
-              </button>
-            </div>
-          )}
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">🌸 选择适合你的方案</h2>
+          <p className="text-gray-500 text-lg">按需选择，灵活订阅</p>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-6 mb-16 max-w-3xl mx-auto">
-          {PLANS.map(plan => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-6 ${
-                plan.highlight
-                  ? `${plan.colorBg} border-2 ${plan.colorBorder} shadow-xl shadow-pink-100`
-                  : 'bg-white border border-gray-100 shadow-sm'
-              }`}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+
+          {/* Free */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">免费版</h3>
+            <p className="text-gray-400 text-sm mb-4">适合体验</p>
+            <div className="text-3xl font-bold text-gray-800 mb-1">$0</div>
+            <p className="text-gray-400 text-sm mb-5">永久</p>
+            <ul className="space-y-2 mb-6 text-sm">
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">每天 3 次免费</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">有水印</span></li>
+              <li className="flex items-center gap-2"><span className="text-gray-300">×</span><span className="text-gray-400">无历史记录</span></li>
+              <li className="flex items-center gap-2"><span className="text-gray-300">×</span><span className="text-gray-400">无预设收藏</span></li>
+            </ul>
+            <button
+              onClick={() => { window.location.href = '/'; }}
+              className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all"
             >
-              {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="px-4 py-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-medium rounded-full">
-                    {plan.badge}
-                  </span>
-                </div>
-              )}
+              免费开始
+            </button>
+          </div>
 
-              <div className="text-center mb-6">
-                <h3 className={`text-lg font-bold ${plan.colorText} mb-1`}>{plan.name}</h3>
-                <p className="text-gray-400 text-sm">{plan.tagline}</p>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-800">
-                    {plan.highlight && billingCycle === 'yearly' ? plan.yearlyPrice : plan.price}
-                  </span>
-                  <span className="text-gray-400 text-sm">
-                    {plan.highlight && billingCycle === 'yearly' ? plan.yearlyPeriod : plan.period}
-                  </span>
-                </div>
-                {plan.highlight && billingCycle === 'yearly' && (
-                  <div className="mt-1">
-                    <span className="text-xs text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
-                      {plan.yearlySaving}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <ul className="space-y-3 mb-6">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm">
-                    <span className={f.included ? 'text-pink-500' : 'text-gray-300'}>
-                      {f.included ? '✓' : '×'}
-                    </span>
-                    <span className={f.included ? 'text-gray-700' : 'text-gray-400'}>{f.text}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* PayPal 订阅按钮 */}
-              {plan.name === 'Pro' && !isPro && isLoggedIn && (
-                <div className="mb-3">
-                  {paypalError ? (
-                    <div className="text-center text-sm text-red-400 py-2">
-                      ⚠️ PayPal 加载失败，请检查网络
-                    </div>
-                  ) : !paypalLoaded ? (
-                    <div className="flex justify-center py-2">
-                      <div className="w-6 h-6 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" />
-                    </div>
-                  ) : (
-                    <div ref={paypalContainerRef} className="min-h-[45px]" />
-                  )}
-                  <p className="text-center text-xs text-gray-400 mt-2">
-                    🔒 安全支付 via PayPal
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={typeof plan.ctaAction === 'function' ? plan.ctaAction : undefined}
-                className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${
-                  plan.highlight ? `${plan.colorBtn} shadow-lg` : plan.colorBtn
-                } ${plan.ctaAction === 'paypal_monthly' && !isLoggedIn ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={plan.ctaAction === 'paypal_monthly' && !isLoggedIn}
-                title={plan.ctaAction === 'paypal_monthly' && !isLoggedIn ? '请先登录' : undefined}
-              >
-                {plan.ctaAction === 'paypal_monthly' && !isLoggedIn
-                  ? '请先登录后再订阅'
-                  : plan.cta}
-              </button>
-
-              {!isLoggedIn && plan.name === 'Pro' && !isPro && (
-                <p className="text-center text-xs text-gray-400 mt-2">
-                  登录后即可订阅 Pro
-                </p>
-              )}
-
-              {isPro && plan.name === 'Pro' && (
-                <div className="w-full py-3 rounded-xl text-sm font-bold text-center bg-green-50 text-green-600 border border-green-200">
-                  ✓ 当前已是 Pro 用户
-                </div>
-              )}
+          {/* Daily */}
+          <div className="bg-white border-2 border-pink-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-bold text-gray-800">日卡</h3>
+              <span className="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full">限时特惠</span>
             </div>
-          ))}
+            <p className="text-gray-400 text-sm mb-4">24小时无限</p>
+            <div className="text-3xl font-bold text-gray-800 mb-1">$0.99</div>
+            <p className="text-gray-400 text-sm mb-5">/ 24小时</p>
+            <ul className="space-y-2 mb-6 text-sm">
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">24小时无限使用</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">无水印</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">批量处理</span></li>
+              <li className="flex items-center gap-2"><span className="text-gray-300">×</span><span className="text-gray-400">到期自动降级</span></li>
+            </ul>
+            {isLoggedIn ? (
+              !paypalLoaded ? (
+                <div className="flex justify-center py-2"><div className="w-6 h-6 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" /></div>
+              ) : (
+                <div ref={paypalContainerRef} className="min-h-[45px]" />
+              )
+            ) : (
+              <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-pink-100 text-pink-400 cursor-not-allowed">
+                请先登录
+              </button>
+            )}
+          </div>
+
+          {/* Monthly */}
+          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-pink-300 rounded-2xl p-5 shadow-lg shadow-pink-100 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className="px-4 py-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-medium rounded-full">
+                最受欢迎
+              </span>
+            </div>
+            <h3 className="text-lg font-bold text-pink-800 mb-1 mt-2">月卡</h3>
+            <p className="text-pink-400 text-sm mb-4">每月无限</p>
+            <div className="text-3xl font-bold text-gray-800 mb-1">$19.9</div>
+            <p className="text-gray-400 text-sm mb-5">/ 月</p>
+            <ul className="space-y-2 mb-6 text-sm">
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">每月无限使用</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">无水印</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">批量处理</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">自动续费</span></li>
+            </ul>
+            {isLoggedIn ? (
+              !paypalLoaded ? (
+                <div className="flex justify-center py-2"><div className="w-6 h-6 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" /></div>
+              ) : (
+                <div ref={paypalContainerRef} className="min-h-[45px]" />
+              )
+            ) : (
+              <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-pink-100 text-pink-400 cursor-not-allowed">
+                请先登录
+              </button>
+            )}
+          </div>
+
+          {/* Yearly */}
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">年卡</h3>
+            <p className="text-gray-400 text-sm mb-4">每年无限</p>
+            <div className="text-3xl font-bold text-gray-800 mb-1">$99</div>
+            <p className="text-gray-400 text-sm mb-1">/ 年</p>
+            <p className="text-green-500 text-xs mb-5">相当于 $8.25/月</p>
+            <ul className="space-y-2 mb-6 text-sm">
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">每年无限使用</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">无水印</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">批量处理</span></li>
+              <li className="flex items-center gap-2"><span className="text-pink-500">✓</span><span className="text-gray-700">自动续费</span></li>
+            </ul>
+            {isLoggedIn ? (
+              !paypalLoaded ? (
+                <div className="flex justify-center py-2"><div className="w-6 h-6 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" /></div>
+              ) : (
+                <div ref={paypalContainerRef} className="min-h-[45px]" />
+              )
+            ) : (
+              <button disabled className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed">
+                请先登录
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Feature Note */}
-        <div className="text-center mb-16">
-          <p className="text-gray-400 text-sm">
-            💡 所有方案均可在处理过程中保存参数为预设，方便下次复用
-          </p>
-        </div>
+        {paypalError && (
+          <div className="text-center text-red-400 text-sm mb-4">⚠️ PayPal 加载失败，请检查网络后刷新页面重试</div>
+        )}
+
+        {isLoggedIn && paypalLoaded && (
+          <p className="text-center text-gray-400 text-sm mb-8">🔒 安全支付 via PayPal · 随时可在个人中心取消订阅</p>
+        )}
+
+        {!isLoggedIn && (
+          <p className="text-center text-gray-400 text-sm mb-8">登录后即可订阅 Pro，畅享无限使用 →</p>
+        )}
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
@@ -341,9 +237,7 @@ export default function PricingPage() {
                   className="w-full px-5 py-4 flex items-center justify-between text-left"
                 >
                   <span className="font-medium text-gray-800">{faq.q}</span>
-                  <span className={`text-gray-400 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
+                  <span className={`text-gray-400 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>▼</span>
                 </button>
                 {openFaq === i && (
                   <div className="px-5 pb-4 text-gray-500 text-sm leading-relaxed border-t border-gray-50 pt-3">
@@ -355,12 +249,8 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Bottom CTA */}
-        <div className="text-center mt-16 pt-8">
-          <p className="text-gray-400 text-sm mb-4">还有疑问？</p>
-          <Link href="/faq" className="text-pink-500 font-medium hover:text-pink-600">
-            查看完整 FAQ →
-          </Link>
+        <div className="text-center mt-12">
+          <Link href="/faq" className="text-pink-500 font-medium hover:text-pink-600">查看完整 FAQ →</Link>
         </div>
       </div>
     </div>

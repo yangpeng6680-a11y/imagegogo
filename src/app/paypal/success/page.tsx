@@ -7,24 +7,43 @@ export default function PayPalSuccessPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // PayPal redirects here with ?subscription_id=XXX&status=ACTIVE
     const params = new URLSearchParams(window.location.search);
     const subscriptionId = params.get('subscription_id');
     const status = params.get('status');
+    const plan = params.get('plan') || 'monthly';
 
     if (subscriptionId && status === 'ACTIVE') {
-      // 订阅成功，激活 Pro
-      localStorage.setItem('is_pro', 'true');
-      localStorage.setItem('pro_subscription_id', subscriptionId);
-      localStorage.setItem('pro_activated_at', String(Date.now()));
-      alert('🎉 升级成功！您现在是 Pro 用户了。');
+      const now = Date.now();
+
+      if (plan === 'daily') {
+        // 日卡：24小时后过期
+        const expireAt = now + 24 * 60 * 60 * 1000;
+        localStorage.setItem('is_pro', 'true');
+        localStorage.setItem('pro_type', 'daily');
+        localStorage.setItem('pro_expire_at', String(expireAt));
+        localStorage.setItem('pro_subscription_id', subscriptionId);
+        alert('🎉 日卡激活成功！24小时内无限使用。');
+      } else {
+        // 月卡/年卡：设置过期时间
+        let expireAt: number;
+        if (plan === 'monthly') {
+          expireAt = now + 30 * 24 * 60 * 60 * 1000; // 30天
+        } else {
+          expireAt = now + 365 * 24 * 60 * 60 * 1000; // 365天
+        }
+        localStorage.setItem('is_pro', 'true');
+        localStorage.setItem('pro_type', plan);
+        localStorage.setItem('pro_expire_at', String(expireAt));
+        localStorage.setItem('pro_subscription_id', subscriptionId);
+        localStorage.setItem('pro_activated_at', String(now));
+        alert(`🎉 升级成功！您现在是 ${plan === 'monthly' ? '月卡' : '年卡'} Pro 用户了。`);
+      }
+
       router.push('/profile');
     } else if (subscriptionId) {
-      // 有 subscription ID 但状态不是 ACTIVE（可能是待处理）
       alert('订阅处理中，稍后将激活。');
       router.push('/pricing');
     } else {
-      // 没有 subscription ID（用户直接访问或取消）
       alert('订阅未完成，请重试。');
       router.push('/pricing');
     }
