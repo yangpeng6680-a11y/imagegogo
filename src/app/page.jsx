@@ -218,6 +218,26 @@ export default function Home() {
       ptsRatio[6] * outWidth, ptsRatio[7] * outHeight
     );
     
+    // 免费用户加水印
+    if (!isPro) {
+      const fontSize = Math.max(12, Math.floor(outHeight * 0.025));
+      outCtx.font = `${fontSize}px sans-serif`;
+      outCtx.fillStyle = 'rgba(255,255,255,0.7)';
+      const text = '图片变形编辑器';
+      const tw = outCtx.measureText(text).width;
+      const padX = fontSize * 0.5;
+      const padY = fontSize * 0.3;
+      const boxW = tw + padX * 2;
+      const boxH = fontSize * 1.4;
+      const boxX = outWidth - boxW - padX;
+      const boxY = outHeight - boxH - padY;
+      outCtx.fillStyle = 'rgba(255,192,203,0.85)';
+      outCtx.fillRect(boxX, boxY, boxW, boxH);
+      outCtx.fillStyle = '#ec4899';
+      outCtx.font = `bold ${fontSize}px sans-serif`;
+      outCtx.fillText(text, boxX + padX, boxY + boxH * 0.75);
+    }
+    
     return outCanvas.toDataURL('image/png', 1.0);
   };
 
@@ -615,6 +635,16 @@ export default function Home() {
       // 消耗一次
       uses += uploadedImages.length;
       localStorage.setItem('today_uses', String(uses));
+      // 免费用户批量最多20张
+      if (uploadedImages.length > 20) {
+        alert(`免费用户每次最多处理 20 张图片。\n\n升级 Pro 解锁批量 50 张处理。`);
+        return;
+      }
+    }
+    // Pro 用户批量最多50张
+    if (uploadedImages.length > 50) {
+      alert(`每次最多处理 50 张图片。`);
+      return;
     }
     // === 限制检查完毕 ===
     
@@ -671,6 +701,25 @@ export default function Home() {
         ptsRatio[4] * outWidth, ptsRatio[5] * outHeight,
         ptsRatio[6] * outWidth, ptsRatio[7] * outHeight
       );
+      
+      // 免费用户加水印
+      if (!isPro) {
+        const fontSize = Math.max(12, Math.floor(outHeight * 0.025));
+        outCtx.font = `${fontSize}px sans-serif`;
+        const text = '图片变形编辑器';
+        const tw = outCtx.measureText(text).width;
+        const padX = fontSize * 0.5;
+        const padY = fontSize * 0.3;
+        const boxW = tw + padX * 2;
+        const boxH = fontSize * 1.4;
+        const boxX = outWidth - boxW - padX;
+        const boxY = outHeight - boxH - padY;
+        outCtx.fillStyle = 'rgba(255,192,203,0.85)';
+        outCtx.fillRect(boxX, boxY, boxW, boxH);
+        outCtx.fillStyle = '#ec4899';
+        outCtx.font = `bold ${fontSize}px sans-serif`;
+        outCtx.fillText(text, boxX + padX, boxY + boxH * 0.75);
+      }
       
       link.href = outCanvas.toDataURL('image/png', 1.0);
       link.download = `合成_${imgData.name.replace(/\.[^/.]+$/, "")}.png`;

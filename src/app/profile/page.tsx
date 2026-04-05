@@ -362,6 +362,21 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                {isPro && proType !== 'daily' && (
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-gray-500 mb-2">订阅管理</p>
+                    <a
+                      href="https://www.paypal.com/myaccount/autopay/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full py-2.5 text-center border border-red-200 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+                    >
+                      取消订阅（前往 PayPal）
+                    </a>
+                    <p className="text-xs text-gray-400 mt-2 text-center">取消后当前周期内仍可使用</p>
+                  </div>
+                )}
+
                 {!isPro && (
                   <div className="pt-4 border-t">
                     <button
