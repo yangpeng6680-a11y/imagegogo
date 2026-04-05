@@ -583,7 +583,7 @@ export default function Home() {
     const today = new Date().toDateString();
     const lastDate = localStorage.getItem('last_use_date');
     let uses = parseInt(localStorage.getItem('today_uses') || '0');
-    const maxFree = isLoggedIn ? 20 : 3;
+    const maxFree = isLoggedIn ? 10 : 3;
 
     // 重置日期
     if (lastDate !== today) {
@@ -596,7 +596,7 @@ export default function Home() {
         if (isLoggedIn) {
           alert(`今天的 ${maxFree} 次免费次数已用完！\n\n升级 Pro 解锁无限次使用，无水印输出。`);
         } else {
-          alert(`未登录用户每天只有 ${maxFree} 次免费使用次数。\n\n登录后可获得每天 20 次免费，升级 Pro 无限次。`);
+          alert(`未登录用户每天只有 ${maxFree} 次免费使用次数。\n\n登录后可获得每天 10 次免费，升级 Pro 无限次。`);
         }
         return;
       }

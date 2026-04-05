@@ -26,7 +26,7 @@ interface PresetItem {
   createdAt: number;
 }
 
-const FREE_DAILY_LIMIT = 20;
+const FREE_DAILY_LIMIT = 10;
 const FREE_HISTORY_DAYS = 7;
 
 export default function ProfilePage() {
