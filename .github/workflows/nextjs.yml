@@ -27,6 +27,6 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy out --project-name=imagegogo --branch=main
+        run: npx wrangler pages deploy docs --project-name=imagegogo --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
