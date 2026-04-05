@@ -11,9 +11,9 @@ declare global {
 
 const PAYPAL_CLIENT_ID = 'AUaZR4_8QMSbqusqLKZRPDQnBUwGl83aDV1HPsR2VPKU8RhvHDVZF0VZ3NkxF52ValE7rmocVQdy8t0b';
 
-// ⚠️ 沙箱模式 billing plan ID — 需在 PayPal Dashboard 创建后替换
-const BILLING_PLAN_ID_MONTHLY = 'YOUR_BILLING_PLAN_ID_MONTHLY';
-const BILLING_PLAN_ID_YEARLY = 'YOUR_BILLING_PLAN_ID_YEARLY';
+// PayPal Billing Plan IDs (沙箱)
+const BILLING_PLAN_ID_MONTHLY = 'P-1D76410052467881WNHJH3QY';
+const BILLING_PLAN_ID_YEARLY = 'P-7KR26603E47014422NHJH3TA';
 
 const PLANS = [
   {
@@ -42,7 +42,7 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    price: '¥19.9',
+    price: '$2.99',
     period: '/月',
     tagline: '适合电商、设计、自媒体',
     color: 'pink',
@@ -64,9 +64,9 @@ const PLANS = [
     cta: '立即订阅',
     ctaAction: 'paypal_monthly',
     highlight: true,
-    yearlyPrice: '¥99',
+    yearlyPrice: '$29.99',
     yearlyPeriod: '/年',
-    yearlySaving: '省 ¥140',
+    yearlySaving: '省 $5.89',
   },
 ];
 
@@ -211,7 +211,7 @@ export default function PricingPage() {
                   billingCycle === 'monthly' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                月付 ¥19.9
+                月付 $2.99
               </button>
               <button
                 onClick={() => setBillingCycle('yearly')}
@@ -219,7 +219,7 @@ export default function PricingPage() {
                   billingCycle === 'yearly' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                年付 ¥99 <span className="text-pink-200">省 ¥140</span>
+                年付 $29.99 <span className="text-pink-200">省 $5.89</span>
               </button>
             </div>
           )}
