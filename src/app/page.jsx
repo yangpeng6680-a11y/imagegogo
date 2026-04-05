@@ -31,6 +31,10 @@ export default function Home() {
   const linkRef = useRef(null);
   const bgUploadAreaRef = useRef(null);
   const fgUploadAreaRef = useRef(null);
+  const isDraggingRef = useRef(false);  // 防止拖动时触发预览重绘
+  const controlPointsRafRef = useRef(null);  // RAF 节流
+  const controlPointsRef = useRef(controlPoints);  // 拖动时实时读取最新值
+  useEffect(() => { controlPointsRef.current = controlPoints; }, [controlPoints]);
 
   // 初始化
   useEffect(() => {
@@ -796,45 +800,53 @@ export default function Home() {
       let isDragging = true;
       let dragPoint = point;
       setDraggingPoint(point);
+      isDraggingRef.current = true;
       const rect = e.target.getBoundingClientRect();
       let offsetX = e.clientX - rect.left;
       let offsetY = e.clientY - rect.top;
 
       const handleMouseMove = (e) => {
         if (!isDragging || !dragPoint) return;
-        
+
         if (!containerRef.current || !canvasRef.current) return;
-        
+
+        // RAF 节流：每帧最多更新一次
+        if (controlPointsRafRef.current) return;
+        controlPointsRafRef.current = requestAnimationFrame(() => {
+          controlPointsRafRef.current = null;
+        });
+
         const containerRect = containerRef.current.getBoundingClientRect();
         const canvas = canvasRef.current;
-        
+
         let x = e.clientX - containerRect.left - offsetX;
         let y = e.clientY - containerRect.top - offsetY;
-        
+
         // 限制在画布范围内
         x = Math.max(0, Math.min(x, canvas.width));
         y = Math.max(0, Math.min(y, canvas.height));
-        
-        // 防止各点交叉
+
+        // 防止各点交叉（用 ref 避免闭包旧值）
+        const cp = controlPointsRef.current;
         switch(dragPoint) {
           case 'topLeft':
-            x = Math.min(x, controlPoints.topRight.x || canvas.width);
-            y = Math.min(y, controlPoints.bottomLeft.y || canvas.height);
+            x = Math.min(x, cp.topRight.x || canvas.width);
+            y = Math.min(y, cp.bottomLeft.y || canvas.height);
             break;
           case 'topRight':
-            x = Math.max(x, controlPoints.topLeft.x || 0);
-            y = Math.min(y, controlPoints.bottomRight.y || canvas.height);
+            x = Math.max(x, cp.topLeft.x || 0);
+            y = Math.min(y, cp.bottomRight.y || canvas.height);
             break;
           case 'bottomLeft':
-            x = Math.min(x, controlPoints.bottomRight.x || canvas.width);
-            y = Math.max(y, controlPoints.topLeft.y || 0);
+            x = Math.min(x, cp.bottomRight.x || canvas.width);
+            y = Math.max(y, cp.topLeft.y || 0);
             break;
           case 'bottomRight':
-            x = Math.max(x, controlPoints.bottomLeft.x || 0);
-            y = Math.max(y, controlPoints.topRight.y || 0);
+            x = Math.max(x, cp.bottomLeft.x || 0);
+            y = Math.max(y, cp.topRight.y || 0);
             break;
         }
-        
+
         // 更新控制点
         setControlPoints(prev => ({
           ...prev,
@@ -845,6 +857,11 @@ export default function Home() {
       const handleMouseUp = () => {
         isDragging = false;
         dragPoint = null;
+        isDraggingRef.current = false;
+        if (controlPointsRafRef.current) {
+          cancelAnimationFrame(controlPointsRafRef.current);
+          controlPointsRafRef.current = null;
+        }
         setDraggingPoint(null);
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -891,14 +908,26 @@ export default function Home() {
 
   // 当控制点变化时，重新生成所有图片的预览
   useEffect(() => {
-    if (uploadedImages.length > 0) {
-      uploadedImages.forEach(async (imgData) => {
-        const previewSrc = await generatePreview(imgData);
-        setUploadedImages(prev => prev.map(item => 
-          item.id === imgData.id ? { ...item, previewSrc } : item
-        ));
-      });
-    }
+    // 拖动时跳过，等拖完再更新
+    if (isDraggingRef.current) return;
+
+    const timer = setTimeout(async () => {
+      if (uploadedImages.length > 0) {
+        // 批量更新，避免每个图片单独触发一次 state 更新
+        const updates = await Promise.all(
+          uploadedImages.map(async (imgData) => {
+            const previewSrc = await generatePreview(imgData);
+            return { id: imgData.id, previewSrc };
+          })
+        );
+        setUploadedImages(prev => prev.map(item => {
+          const update = updates.find(u => u.id === item.id);
+          return update ? { ...item, previewSrc: update.previewSrc } : item;
+        }));
+      }
+    }, 100); // 100ms 防抖
+
+    return () => clearTimeout(timer);
   }, [controlPoints, currentImageObj, backgroundImageObj, useBackground]);
 
   // 监听控制点变化，重绘画布
