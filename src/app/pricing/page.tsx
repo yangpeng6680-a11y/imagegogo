@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
+declare global {
+  interface Window {
+    paypal?: any;
+  }
+}
+
+const PAYPAL_CLIENT_ID = 'AUaZR4_8QMSbqusqLKZRPDQnBUwGl83aDV1HPsR2VPKU8RhvHDVZF0VZ3NkxF52ValE7rmocVQdy8t0b';
+
+// ⚠️ 沙箱模式 billing plan ID — 需在 PayPal Dashboard 创建后替换
+const BILLING_PLAN_ID_MONTHLY = 'YOUR_BILLING_PLAN_ID_MONTHLY';
+const BILLING_PLAN_ID_YEARLY = 'YOUR_BILLING_PLAN_ID_YEARLY';
 
 const PLANS = [
   {
@@ -26,7 +37,7 @@ const PLANS = [
       { text: '永久历史记录', included: false },
     ],
     cta: '免费开始',
-    ctaLink: '/',
+    ctaAction: () => { window.location.href = '/'; },
     highlight: false,
   },
   {
@@ -50,8 +61,8 @@ const PLANS = [
       { text: '优先处理队列', included: true },
       { text: '专属客服支持', included: true },
     ],
-    cta: '立即升级',
-    ctaLink: '#checkout',
+    cta: '立即订阅',
+    ctaAction: 'paypal_monthly',
     highlight: true,
     yearlyPrice: '¥99',
     yearlyPeriod: '/年',
@@ -59,39 +70,15 @@ const PLANS = [
   },
 ];
 
-const FAQS = [
-  {
-    q: '免费次数用完了怎么办？',
-    a: '每天凌晨零点会重置免费次数。如果当天的次数已经用完，可以等到第二天继续使用，或者升级到 Pro 版本解锁无限次使用。',
-  },
-  {
-    q: '升级 Pro 后可以开发票吗？',
-    a: '目前支持开具普通发票。升级 Pro 后请联系客服，提供您的邮箱和发票抬头，我们会尽快为您处理。',
-  },
-  {
-    q: '水印是什么样的？会影响图片效果吗？',
-    a: '免费版本输出的图片右下角会有一个小的粉色文字水印（"图片变形编辑器"）。水印不会影响图片的主体内容，只占很小一块区域。',
-  },
-  {
-    q: '批量处理有什么限制？',
-    a: 'Pro 用户每次最多可以同时处理 50 张图片，所有图片会应用相同的变形参数。这对于电商批量修改商品图非常有用。',
-  },
-  {
-    q: '我的图片和数据会被保存吗？',
-    a: '所有图片处理都在您的浏览器本地完成，我们不会上传或保存您的原始图片。只有您主动保存的历史记录元数据（参数、缩略图）会存储在本地。',
-  },
-  {
-    q: '如何取消订阅？',
-    a: '您可以随时取消订阅，取消后当前付费周期内仍可继续使用 Pro 功能，次月不会自动扣款。取消订阅请在个人中心操作。',
-  },
-];
-
 export default function PricingPage() {
-  const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+  const [paypalError, setPaypalError] = useState(false);
+  const paypalContainerRef = useRef<HTMLDivElement>(null);
+  const subscribed = useRef(false);
 
   useEffect(() => {
     const token = localStorage.getItem('google_access_token');
@@ -99,20 +86,95 @@ export default function PricingPage() {
     setIsPro(localStorage.getItem('is_pro') === 'true');
   }, []);
 
-  const handleCheckout = () => {
-    if (!isLoggedIn) {
-      // 触发 Google 登录
-      const params = new URLSearchParams({
-        client_id: '513906618740-1349pr9b405i2ddfmhjr45fimngdta3n.apps.googleusercontent.com',
-        redirect_uri: 'https://imagedistortion.shop/api/auth/callback/google',
-        response_type: 'token',
-        scope: 'email profile openid',
-      });
-      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-      return;
+  // 加载 PayPal SDK
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
+    script.async = true;
+    script.onload = () => {
+      setPaypalLoaded(true);
+    };
+    script.onerror = () => {
+      setPaypalError(true);
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector(`script[src*="paypal.com/sdk"]`);
+      if (existingScript) existingScript.remove();
+    };
+  }, []);
+
+  // 渲染 PayPal 订阅按钮
+  useEffect(() => {
+    if (!paypalLoaded || subscribed.current || !window.paypal || !paypalContainerRef.current) return;
+
+    const planId = billingCycle === 'monthly' ? BILLING_PLAN_ID_MONTHLY : BILLING_PLAN_ID_YEARLY;
+
+    // 清理旧按钮
+    const container = paypalContainerRef.current;
+    container.innerHTML = '';
+
+    try {
+      window.paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'gold',
+          shape: 'rect',
+          label: 'subscribe',
+        },
+        createSubscription: (data: any, actions: any) => {
+          return actions.subscription.create({
+            plan_id: planId,
+          });
+        },
+        onApprove: (data: any, actions: any) => {
+          // 订阅获批准，跳转到成功页
+          subscribed.current = true;
+          const returnUrl = `${window.location.origin}/paypal/success?subscription_id=${data.subscriptionID}&status=ACTIVE`;
+          window.location.href = returnUrl;
+        },
+        onError: (err: any) => {
+          console.error('PayPal error:', err);
+          alert('支付出错，请重试。');
+        },
+        onCancel: () => {
+          // 用户取消
+        },
+      }).render(container);
+    } catch (e) {
+      console.error('PayPal render error:', e);
     }
-    alert('支付功能即将上线，敬请期待！');
-  };
+  }, [paypalLoaded, billingCycle]);
+
+  const FAQS = [
+    {
+      q: '免费次数用完了怎么办？',
+      a: '每天凌晨零点会重置免费次数。如果当天的次数已经用完，可以等到第二天继续使用，或者升级到 Pro 版本解锁无限次使用。',
+    },
+    {
+      q: '升级 Pro 后可以开发票吗？',
+      a: '目前支持开具普通发票。升级 Pro 后请联系客服，提供您的邮箱和发票抬头，我们会尽快为您处理。',
+    },
+    {
+      q: '水印是什么样的？会影响图片效果吗？',
+      a: '免费版本输出的图片右下角会有一个小的粉色文字水印（"图片变形编辑器"）。水印不会影响图片的主体内容，只占很小一块区域。',
+    },
+    {
+      q: '批量处理有什么限制？',
+      a: 'Pro 用户每次最多可以同时处理 50 张图片，所有图片会应用相同的变形参数。这对于电商批量修改商品图非常有用。',
+    },
+    {
+      q: '我的图片和数据会被保存吗？',
+      a: '所有图片处理都在您的浏览器本地完成，我们不会上传或保存您的原始图片。只有您主动保存的历史记录元数据（参数、缩略图）会存储在本地。',
+    },
+    {
+      q: '如何取消订阅？',
+      a: '您可以随时取消订阅，取消后当前付费周期内仍可继续使用 Pro 功能，次月不会自动扣款。取消订阅请在个人中心操作。',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
@@ -141,7 +203,6 @@ export default function PricingPage() {
             无论你是偶尔使用还是专业设计师，都能找到合适的方案
           </p>
 
-          {/* Billing Toggle */}
           {isLoggedIn && !isPro && (
             <div className="mt-6 inline-flex items-center gap-2 bg-white rounded-full p-1 shadow-sm border border-gray-100">
               <button
@@ -214,21 +275,55 @@ export default function PricingPage() {
                 ))}
               </ul>
 
+              {/* PayPal 订阅按钮 */}
+              {plan.name === 'Pro' && !isPro && isLoggedIn && (
+                <div className="mb-3">
+                  {paypalError ? (
+                    <div className="text-center text-sm text-red-400 py-2">
+                      ⚠️ PayPal 加载失败，请检查网络
+                    </div>
+                  ) : !paypalLoaded ? (
+                    <div className="flex justify-center py-2">
+                      <div className="w-6 h-6 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div ref={paypalContainerRef} className="min-h-[45px]" />
+                  )}
+                  <p className="text-center text-xs text-gray-400 mt-2">
+                    🔒 安全支付 via PayPal
+                  </p>
+                </div>
+              )}
+
               <button
-                onClick={handleCheckout}
+                onClick={typeof plan.ctaAction === 'function' ? plan.ctaAction : undefined}
                 className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${
-                  plan.highlight
-                    ? `${plan.colorBtn} shadow-lg`
-                    : `${plan.colorBtn}`
-                }`}
+                  plan.highlight ? `${plan.colorBtn} shadow-lg` : plan.colorBtn
+                } ${plan.ctaAction === 'paypal_monthly' && !isLoggedIn ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={plan.ctaAction === 'paypal_monthly' && !isLoggedIn}
+                title={plan.ctaAction === 'paypal_monthly' && !isLoggedIn ? '请先登录' : undefined}
               >
-                {plan.cta}
+                {plan.ctaAction === 'paypal_monthly' && !isLoggedIn
+                  ? '请先登录后再订阅'
+                  : plan.cta}
               </button>
+
+              {!isLoggedIn && plan.name === 'Pro' && !isPro && (
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  登录后即可订阅 Pro
+                </p>
+              )}
+
+              {isPro && plan.name === 'Pro' && (
+                <div className="w-full py-3 rounded-xl text-sm font-bold text-center bg-green-50 text-green-600 border border-green-200">
+                  ✓ 当前已是 Pro 用户
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Feature Comparison Note */}
+        {/* Feature Note */}
         <div className="text-center mb-16">
           <p className="text-gray-400 text-sm">
             💡 所有方案均可在处理过程中保存参数为预设，方便下次复用
@@ -260,7 +355,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* CTA Bottom */}
+        {/* Bottom CTA */}
         <div className="text-center mt-16 pt-8">
           <p className="text-gray-400 text-sm mb-4">还有疑问？</p>
           <Link href="/faq" className="text-pink-500 font-medium hover:text-pink-600">
