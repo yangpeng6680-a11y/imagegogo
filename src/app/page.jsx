@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, googleProvider } from './firebase';
+import { googleLogin } from '../../firebase.jsx';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
@@ -24,6 +23,7 @@ export default function Home() {
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 300 });
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [loginError, setLoginError] = useState('');
 
   // 引用
   const canvasRef = useRef(null);
@@ -34,22 +34,33 @@ export default function Home() {
 
   // 初始化
   useEffect(() => {
-    // 监听 Firebase Auth 状态
-    let unsubscribe = () => {};
-    try {
-      unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
+    // 检查是否已有 Google 登录态
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('google_access_token');
+        if (token) {
+          const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (resp.ok) {
+            const profile = await resp.json();
+            setUser({
+              email: profile.email,
+              displayName: profile.name,
+              photoURL: profile.picture,
+              uid: profile.id,
+            });
+          } else {
+            localStorage.removeItem('google_access_token');
+          }
+        }
+      } catch (e) {
+        console.error('Auth check error:', e);
+      } finally {
         setAuthLoading(false);
-      });
-    } catch (e) {
-      console.error('Firebase Auth error:', e);
-      setAuthLoading(false);
-    }
-    
-    // Firebase 超时保护（3秒），避免在中国大陆无法连接 Google 服务器导致一直加载
-    const timeoutId = setTimeout(() => {
-      setAuthLoading(false);
-    }, 3000);
+      }
+    };
+    checkAuth();
     
     // 初始化下载链接
     if (!linkRef.current) {
@@ -63,8 +74,6 @@ export default function Home() {
     const cleanupFg = setupDragAndDrop(fgUploadAreaRef, 'imageUpload', setIsDraggingFg);
     
     return () => {
-      unsubscribe();
-      clearTimeout(timeoutId);
       // 清理下载链接
       if (linkRef.current && linkRef.current.parentNode) {
         try {
@@ -81,23 +90,15 @@ export default function Home() {
     };
   }, []);
 
-  // Google 登录
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Google login failed:', error);
-      alert('登录失败: ' + error.message);
-    }
+  // Google 登录 — 跳转到 Google OAuth
+  const handleGoogleLogin = () => {
+    googleLogin();
   };
 
-  // Google 登出
-  const handleGoogleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Google logout failed:', error);
-    }
+  // Google 登出 — 清除本地 token
+  const handleGoogleLogout = () => {
+    localStorage.removeItem('google_access_token');
+    setUser(null);
   };
 
   // 拖拽上传功能
