@@ -576,6 +576,35 @@ export default function Home() {
     if (useBackground && !backgroundImageObj) return alert('你开启了底图模式，请上传一张背景图！');
     
     if (!canvasRef.current || !linkRef.current) return;
+
+    // === 使用次数限制 ===
+    const isLoggedIn = !!localStorage.getItem('google_access_token');
+    const isPro = localStorage.getItem('is_pro') === 'true';
+    const today = new Date().toDateString();
+    const lastDate = localStorage.getItem('last_use_date');
+    let uses = parseInt(localStorage.getItem('today_uses') || '0');
+    const maxFree = isLoggedIn ? 20 : 3;
+
+    // 重置日期
+    if (lastDate !== today) {
+      uses = 0;
+      localStorage.setItem('last_use_date', today);
+    }
+
+    if (!isPro) {
+      if (uses >= maxFree) {
+        if (isLoggedIn) {
+          alert(`今天的 ${maxFree} 次免费次数已用完！\n\n升级 Pro 解锁无限次使用，无水印输出。`);
+        } else {
+          alert(`未登录用户每天只有 ${maxFree} 次免费使用次数。\n\n登录后可获得每天 20 次免费，升级 Pro 无限次。`);
+        }
+        return;
+      }
+      // 消耗一次
+      uses += uploadedImages.length;
+      localStorage.setItem('today_uses', String(uses));
+    }
+    // === 限制检查完毕 ===
     
     // 获取界面上归一化的控制点比例
     const previewCanvas = canvasRef.current;
@@ -854,6 +883,13 @@ export default function Home() {
       {/* User info header */}
       {user ? (
         <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
+          <div className="flex items-center gap-2 mr-auto">
+            <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium">定价</a>
+            <span className="text-gray-300">|</span>
+            <a href="/faq" className="text-xs text-pink-500 hover:text-pink-600 font-medium">帮助</a>
+            <span className="text-gray-300">|</span>
+            <a href="/profile" className="text-xs text-pink-500 hover:text-pink-600 font-medium">个人中心</a>
+          </div>
           <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
           <span className="text-sm text-gray-600">{user.email}</span>
           <button
@@ -865,6 +901,8 @@ export default function Home() {
         </div>
       ) : (
         <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
+          <a href="/faq" className="text-xs text-gray-400 hover:text-gray-600 mr-auto">帮助</a>
+          <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium mr-4">升级 Pro</a>
           <button
             onClick={handleGoogleLogin}
             className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
@@ -1204,6 +1242,22 @@ export default function Home() {
           </a>
         </div>
       </div>
+
+      {/* 升级悬浮条 - 免费用户可见 */}
+      {user && !localStorage.getItem('is_pro') && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 px-4 shadow-lg z-50 flex items-center justify-center gap-4">
+          <div className="text-sm">
+            🌸 今日已使用 <strong>{localStorage.getItem('today_uses') || '0'}</strong> 次
+            {parseInt(localStorage.getItem('today_uses') || '0') >= 20 ? '，次数已用完' : ''}
+          </div>
+          <a
+            href="/pricing"
+            className="px-5 py-1.5 bg-white text-pink-600 text-sm font-bold rounded-full hover:shadow-lg transition-all"
+          >
+            ⭐ 升级 Pro 解锁无限
+          </a>
+        </div>
+      )}
     </div>
   );
 }
