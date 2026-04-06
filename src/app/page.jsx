@@ -13,7 +13,7 @@ export default function Home() {
   const [draggingPoint, setDraggingPoint] = useState(null);
   const [isDraggingBg, setIsDraggingBg] = useState(false);
   const [isDraggingFg, setIsDraggingFg] = useState(false);
-  // 初始控制点只固定原点(0,0)
+  // initial control points only fix origin(0,0)
   const [controlPoints, setControlPoints] = useState({
     topLeft: { x: 0, y: 0 },
     topRight: { x: 0, y: 0 },
@@ -25,26 +25,26 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [loginError, setLoginError] = useState('');
 
-  // 引用
+  // 引
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const linkRef = useRef(null);
   const bgUploadAreaRef = useRef(null);
   const fgUploadAreaRef = useRef(null);
-  const isDraggingRef = useRef(false);  // 防止拖动时触发预览重绘
+  const isDraggingRef = useRef(false);  // 防止拖动时触发preview重绘
   const controlPointsRafRef = useRef(null);  // RAF 节流
-  const controlPointsRef = useRef(controlPoints);  // 拖动时实时读取最新值
+  const controlPointsRef = useRef(controlPoints);  // read latest value while dragging
   useEffect(() => { controlPointsRef.current = controlPoints; }, [controlPoints]);
 
   // 初始化
   useEffect(() => {
-    // 检查是否已有 Google 登录态
+    // 检查是否已有 Google Login态
     let authTimeout;
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('google_access_token');
         if (token) {
-          // 带 AbortController 超时（5秒）
+          // 带 AbortController 超时（5s）
           const controller = new AbortController();
           authTimeout = setTimeout(() => controller.abort(), 5000);
           const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -73,14 +73,14 @@ export default function Home() {
     };
     checkAuth();
     
-    // 初始化下载链接
+    // init download links
     if (!linkRef.current) {
       const link = document.createElement('a');
       document.body.appendChild(link);
       linkRef.current = link;
     }
     
-    // 设置拖拽上传功能
+    // Settingsdrag & drop upload
     const cleanupBg = setupDragAndDrop(bgUploadAreaRef, 'bgUpload', setIsDraggingBg);
     const cleanupFg = setupDragAndDrop(fgUploadAreaRef, 'imageUpload', setIsDraggingFg);
     
@@ -101,18 +101,18 @@ export default function Home() {
     };
   }, []);
 
-  // Google 登录 — 跳转到 Google OAuth
+  // Google Login — go to Google OAuth
   const handleGoogleLogin = () => {
     googleLogin();
   };
 
-  // Google 登出 — 清除本地 token
+  // Google Logout — 清除本地 token
   const handleGoogleLogout = () => {
     localStorage.removeItem('google_access_token');
     setUser(null);
   };
 
-  // 拖拽上传功能
+  // drag & drop upload
   const setupDragAndDrop = (ref, inputId, setDraggingState) => {
     if (!ref.current) return;
     
@@ -155,7 +155,7 @@ export default function Home() {
     };
   };
 
-  // 处理背景图上传
+  // handle background image upload
   const handleBgUpload = (e) => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
@@ -172,11 +172,11 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
-  // 生成调整后的图片预览
+  // 生成调整后的imagepreview
   const generatePreview = async (imgData) => {
     if (!canvasRef.current) return imgData.originalSrc;
 
-    // 获取界面上归一化的控制点比例
+    // 获取界面上归one化的control pointsratio
     const previewCanvas = canvasRef.current;
     const getScale = (point, prop) => controlPoints[point][prop] / (prop === 'x' ? previewCanvas.width : previewCanvas.height);
     
@@ -187,7 +187,7 @@ export default function Home() {
       getScale('bottomRight', 'x'), getScale('bottomRight', 'y'),
     ];
 
-    // 以原图分辨率为基准高清导出
+    // based on original image resolutionHeightclear export
     let outWidth, outHeight;
     if (useBackground && backgroundImageObj) {
       outWidth = backgroundImageObj.width;
@@ -213,7 +213,7 @@ export default function Home() {
       outCtx.drawImage(backgroundImageObj, 0, 0, outWidth, outHeight);
     }
     
-    // 应用形变，使用图片原始尺寸
+    // 应形变，使imageoriginal size
     drawPerspectiveImage(outCtx, img,
       0, 0, img.width, 0, 0, img.height, img.width, img.height,
       ptsRatio[0] * outWidth, ptsRatio[1] * outHeight,
@@ -225,7 +225,7 @@ export default function Home() {
     return outCanvas.toDataURL('image/png', 1.0);
   };
 
-  // 处理前景图批量上传
+  // process前景图批量上传
   const handleImageUpload = (e) => {
     const files = e.target.files;
     const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -243,33 +243,33 @@ export default function Home() {
         img.onload = function() {
           const imageRatio = img.width / img.height;
           
-          // 检查是否是第一张图片
+          // 检查是否是oneimage
           if (isFirstImage) {
-            // 第一张图片，保存比例
+            // oneimage，Saveratio
             firstImageRatio = imageRatio;
             console.log('First image loaded:', img.width, 'x', img.height, 'aspect ratio:', imageRatio);
             
-            // 更新当前显示的图片
+            // update currently displayed image
             setCurrentImageObj(img);
             
-            // 直接调用updateCanvasSizeAndReset函数
+            // 直接调updateCanvasSizeAndReset函数
             setTimeout(() => {
               updateCanvasSizeAndReset();
             }, 0);
             
-            // 标记已处理第一张图片
+            // mark first image as processed
             isFirstImage = false;
           } else {
-            // 非第一张图片，检查比例是否一致
+            // 非oneimage，检查ratio是否one致
             if (Math.abs(imageRatio - firstImageRatio) > 0.01) {
-              alert(`图片 ${file.name} 的比例与第一张图片不一致，请上传相同比例的图片！`);
+              alert(`image ${file.name} 的ratio与oneimage不one致，请上传相同ratio的image！`);
               return;
             }
             console.log('Additional image loaded:', file.name, 'aspect ratio:', imageRatio);
-            // 非第一张图片，不更新currentImageObj
+            // 非oneimage，不更新currentImageObj
           }
           
-          // 添加到图片数组
+          // add to image array
           const imageData = {
             id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
             name: file.name,
@@ -283,7 +283,7 @@ export default function Home() {
             setUploadedImages(prev => [...prev, ...newImages]);
             console.log('Total images uploaded:', newImages.length);
             
-            // 生成预览
+            // generate preview
             newImages.forEach(async (imgData) => {
               const previewSrc = await generatePreview(imgData);
               setUploadedImages(prev => prev.map(item => 
@@ -298,50 +298,50 @@ export default function Home() {
     });
   };
 
-  // 点击放大查看图片
+  // click to enlargeimage
   const handlePreviewImage = async (imgData, index) => {
     const previewSrc = imgData.previewSrc || await generatePreview(imgData);
     
-    // 创建预览窗口
+    // create preview window
     const previewWindow = window.open('', '_blank', 'width=800,height=600');
-    previewWindow.document.write('<html><head><title>图片预览</title><style>body{font-family:Arial,sans-serif;margin:20px;}h1{text-align:center;color:#ff6b9d;}img{max-width:100%;height:auto;margin:10px 0;border:1px solid #ddd;}h3{margin-top:0;color:#666;}p{text-align:center;color:#999;}</style></head><body>');
-    previewWindow.document.write(`<h1>📷 图片预览</h1>`);
+    previewWindow.document.write('<html><head><title>imagepreview</title><style>body{font-family:Arial,sans-serif;margin:20px;}h1{text-align:center;color:#ff6b9d;}img{max-width:100%;height:auto;margin:10px 0;border:1px solid #ddd;}h3{margin-top:0;color:#666;}p{text-align:center;color:#999;}</style></head><body>');
+    previewWindow.document.write(`<h1>📷 imagepreview</h1>`);
     previewWindow.document.write(`<h3>${imgData.name}</h3>`);
     previewWindow.document.write(`<img src="${previewSrc}" alt="${imgData.name}">`);
-    previewWindow.document.write(`<p>第 ${index + 1} 张，共 ${uploadedImages.length} 张</p>`);
+    previewWindow.document.write(`<p> ${index + 1} ，Total:  ${uploadedImages.length} </p>`);
     previewWindow.document.write('</body></html>');
     previewWindow.document.close();
   };
 
-  // 更新画布大小并重置
+  // update canvas size andReset
   const updateCanvasSizeAndReset = () => {
     if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
-    // 调整最大限制，确保16:9的图片不会超出屏幕
+    // adjust max limit，ensure16:9的image不会超出屏幕
     const maxWidth = 900;
     const maxHeight = 600;
     
     let width, height;
 
-    // 1. 确定画布尺寸基准
+    // 1. determine canvas size base
     if (useBackground && backgroundImageObj) {
-      // 有背景图时，以背景图为基准
+      // 有背景图时，based on background image
       width = backgroundImageObj.width;
       height = backgroundImageObj.height;
     } else if (currentImageObj) {
-      // 无背景图时，以需要修改的图片为基准
+      // 无背景图时，以需要修改的image为base
       width = currentImageObj.width;
       height = currentImageObj.height;
     } else {
-      // 无图片时的默认尺寸
+      // No image default size when
       width = 400;
       height = 300;
     }
 
     console.log('Original image size:', width, 'x', height, 'aspect ratio:', width/height);
 
-    // 2. 确保画布不超出最大限制，但保持原始比例
+    // 2. ensurecanvas不超出最大限制，但保持originalratio
     if (width > maxWidth) {
       height = height * (maxWidth / width);
       width = maxWidth;
@@ -357,11 +357,11 @@ export default function Home() {
     canvas.height = height;
     setCanvasSize({ width, height });
 
-    // 3. 重置控制点
+    // 3. reset control points
     resetControlPoints();
   };
 
-  // 重置控制点
+  // reset control points
   const resetControlPoints = () => {
     if (!canvasRef.current) return;
     
@@ -372,23 +372,23 @@ export default function Home() {
       console.log('Current image size:', currentImageObj.width, 'x', currentImageObj.height);
       console.log('Canvas size:', canvas.width, 'x', canvas.height);
       
-      // 计算缩放比例，确保图片能够完整显示在画布内
-      // 取较小的缩放比例，确保图片不会超出画布
+      // 计算缩放ratio，ensureimagecan fully display in canvas
+      // use smaller scale，ensureimage不会超出canvas
       const scale = Math.min(
-        (canvas.width * 0.8) / currentImageObj.width, // 留10%的边距
+        (canvas.width * 0.8) / currentImageObj.width, // keep10% margin
         (canvas.height * 0.8) / currentImageObj.height
       );
       const drawW = currentImageObj.width * scale;
       const drawH = currentImageObj.height * scale;
       
-      // 计算居中位置的偏移量，确保前景图在画布中完全居中
+      // 计算居中位置的偏移量，ensure前景图incanvas中完全居中
       const offsetX = (canvas.width - drawW) / 2;
       const offsetY = (canvas.height - drawH) / 2;
       
       console.log('Scale:', scale, 'Draw size:', drawW, 'x', drawH);
       console.log('Offset:', offsetX, offsetY);
       
-      // 设置控制点，使前景图在画布中居中显示
+      // Settingscontrol points，使前景图incanvas中居中display
       tlx = offsetX;
       tly = offsetY;
       trx = offsetX + drawW;
@@ -400,7 +400,7 @@ export default function Home() {
       
       console.log('Control points:', { tlx, tly, trx, try_, blx, bly, brx, bry });
     } else {
-      // 无图片时的默认占位
+      // No image时的默认占位
       tlx = 0; tly = 0;
       trx = canvas.width; try_ = 0;
       blx = 0; bly = canvas.height;
@@ -415,14 +415,14 @@ export default function Home() {
     });
   };
 
-  // 绘制画布
+  // 绘制canvas
   const redrawCanvas = () => {
     if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     
-    // 1. 清空画布并绘制背景
+    // 1. clear canvas and draw background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (useBackground && backgroundImageObj) {
       ctx.drawImage(backgroundImageObj, 0, 0, canvas.width, canvas.height);
@@ -430,7 +430,7 @@ export default function Home() {
 
     if (!currentImageObj) return;
 
-    // 获取控制点坐标
+    // get control point coordinates
     const pts = [
       controlPoints.topLeft.x, controlPoints.topLeft.y,
       controlPoints.topRight.x, controlPoints.topRight.y,
@@ -438,16 +438,16 @@ export default function Home() {
       controlPoints.bottomRight.x, controlPoints.bottomRight.y
     ];
 
-    // 2. 绘制形变后的前景图叠加在背景上
+    // 2. 绘制形变后的前景图叠加in背景上
     drawPerspectiveImage(ctx, currentImageObj, 
       0, 0, currentImageObj.width, 0, 0, currentImageObj.height, currentImageObj.width, currentImageObj.height,
       pts[0], pts[1], pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]
     );
 
-    // 3. 绘制辅助网格线
+    // 3. draw guide grid lines
     ctx.strokeStyle = 'rgba(255, 107, 157, 0.8)';
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]); // 虚线更美观
+    ctx.setLineDash([4, 4]); // dashed lines for better aesthetics
     ctx.beginPath();
     ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]);
     ctx.lineTo(pts[6], pts[7]); ctx.lineTo(pts[4], pts[5]);
@@ -456,10 +456,10 @@ export default function Home() {
     ctx.setLineDash([]);
   };
 
-  // 线性插值
+  // linear interpolation
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  // 判断点是否在四边形内
+  // 判断点是否in四边形
   const pointInQuad = (px, py, x1, y1, x2, y2, x3, y3, x4, y4) => {
     function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
     function vec(a, b) { return [b[0]-a[0], b[1]-a[1]]; }
@@ -472,7 +472,7 @@ export default function Home() {
     return (c1 >= 0 && c2 >= 0 && c3 >= 0 && c4 >= 0) || (c1 <= 0 && c2 <= 0 && c3 <= 0 && c4 <= 0);
   };
 
-  // 将点映射到单位正方形
+  // map points to unit square
   const mapPointToUnitSquare = (x, y, x1, y1, x2, y2, x3, y3, x4, y4) => {
     let u = 0.5, v = 0.5;
     for (let i = 0; i < 5; i++) {
@@ -493,7 +493,7 @@ export default function Home() {
     return [u, v];
   };
 
-  // 双线性插值
+  // bilinear interpolation
   const bilinearInterpolate = (x, y, width, height, data) => {
     const x1 = Math.floor(x), y1 = Math.floor(y);
     const x2 = Math.min(x1 + 1, width - 1), y2 = Math.min(y1 + 1, height - 1);
@@ -521,7 +521,7 @@ export default function Home() {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
     
-    // 离屏渲染原图（使用图片原始尺寸，避免拉伸）
+    // offscreen render original（使imageoriginal size，避免拉伸）
     const offscreen = document.createElement('canvas');
     offscreen.width = img.width;
     offscreen.height = img.height;
@@ -531,7 +531,7 @@ export default function Home() {
     const imgData = offscreenCtx.getImageData(0, 0, img.width, img.height);
     const data = imgData.data;
 
-    // 获取目标画布当前的像素（包含了已经画好的背景！）
+    // get target canvas pixels（包含了已经画好的背景！）
     const output = ctx.getImageData(0, 0, width, height);
     const outData = output.data;
 
@@ -545,16 +545,16 @@ export default function Home() {
         if (!pointInQuad(x, y, destX1, destY1, destX2, destY2, destX4, destY4, destX3, destY3)) continue;
 
         const [u, v] = mapPointToUnitSquare(x, y, destX1, destY1, destX2, destY2, destX3, destY3, destX4, destY4);
-        // 使用图片原始尺寸进行映射，避免拉伸
+        // 使imageoriginal size进行映射，避免拉伸
         const srcX = u * img.width;
         const srcY = v * img.height;
 
-        // 双线性插值，获取原图的 [r, g, b, a]
+        // bilinear interpolation，获取原图的 [r, g, b, a]
         const color = bilinearInterpolate(srcX, srcY, img.width, img.height, data);
         
         const idx = (y * width + x) * 4;
         
-        // Alpha透明度混合计算 (前景色 Over 背景色)
+        // Alphaalpha blending calculation (前景色 Over background color)
         const srcAlpha = color[3] / 255;
         const bgAlpha = outData[idx + 3] / 255;
         const outAlpha = srcAlpha + bgAlpha * (1 - srcAlpha);
@@ -568,7 +568,7 @@ export default function Home() {
       }
     }
 
-    // 直接将处理好的带有背景的像素塞回画布
+    // put processed pixels with background back to canvas
     ctx.putImageData(output, 0, 0);
   };
 
@@ -576,20 +576,20 @@ export default function Home() {
 
   // 批量下载
   const handleDownloadAll = async () => {
-    if (uploadedImages.length === 0) return alert('请先上传需要拉伸的图片！');
-    if (useBackground && !backgroundImageObj) return alert('你开启了底图模式，请上传一张背景图！');
+    if (uploadedImages.length === 0) return alert('Please first Upload images to warp！');
+    if (useBackground && !backgroundImageObj) return alert('Background mode is enabled. Please upload a background image!');
     
     if (!canvasRef.current || !linkRef.current) return;
 
-    // === 使用次数限制 ===
+    // === use count limit ===
     const isLoggedIn = !!localStorage.getItem('google_access_token');
-    // 检查 Pro 是否过期
+    // 检查 Pro  is expired
     const storedProType = localStorage.getItem('pro_type');
     const storedExpireAt = localStorage.getItem('pro_expire_at');
     let isPro = localStorage.getItem('is_pro') === 'true';
     if (isPro && storedExpireAt) {
       if (Date.now() > parseInt(storedExpireAt)) {
-        // 已过期，降级为免费用户
+        //  expired，downgrade to free user
         isPro = false;
         localStorage.setItem('is_pro', 'false');
         localStorage.removeItem('pro_type');
@@ -601,7 +601,7 @@ export default function Home() {
     let uses = parseInt(localStorage.getItem('today_uses') || '0');
     const maxFree = isLoggedIn ? 10 : 3;
 
-    // 重置日期
+    // Resetdate
     if (lastDate !== today) {
       uses = 0;
       localStorage.setItem('last_use_date', today);
@@ -610,29 +610,29 @@ export default function Home() {
     if (!isPro) {
       if (uses >= maxFree) {
         if (isLoggedIn) {
-          alert(`今天的 ${maxFree} 次免费次数已用完！\n\n升级 Pro 解锁无限次使用，无水印输出。`);
+          alert(`Today's  ${maxFree}  free uses exhausted！\n\nupgrade Pro unlimited uses，无水印输出。`);
         } else {
-          alert(`未登录用户每天只有 ${maxFree} 次免费使用次数。\n\n登录后可获得每天 10 次免费，升级 Pro 无限次。`);
+          alert(`Not Login户每day只有 ${maxFree} Freeuse 。\n\nLogin后可获得每day 10 Free，upgrade Pro unlimited。`);
         }
         return;
       }
-      // 消耗一次
+      // 消耗one
       uses += uploadedImages.length;
       localStorage.setItem('today_uses', String(uses));
-      // 免费用户批量最多20张
+      // Free户批量最多20
       if (uploadedImages.length > 20) {
-        alert(`免费用户每次最多处理 20 张图片。\n\n升级 Pro 解锁批量 50 张处理。`);
+        alert(`Free users max per process 20 image。\n\nupgrade Pro 解锁批量 50 process。`);
         return;
       }
     }
-    // Pro 用户批量最多50张
+    // Pro 户批量最多50
     if (uploadedImages.length > 50) {
-      alert(`每次最多处理 50 张图片。`);
+      alert(`每最多process 50 image。`);
       return;
     }
     // === 限制检查完毕 ===
     
-    // 获取界面上归一化的控制点比例
+    // 获取界面上归one化的control pointsratio
     const previewCanvas = canvasRef.current;
     const getScale = (point, prop) => controlPoints[point][prop] / (prop === 'x' ? previewCanvas.width : previewCanvas.height);
     
@@ -645,7 +645,7 @@ export default function Home() {
 
     const link = linkRef.current;
 
-    // 以原图分辨率为基准高清导出
+    // based on original image resolutionHeightclear export
     let outWidth, outHeight;
     if (useBackground && backgroundImageObj) {
       outWidth = backgroundImageObj.width;
@@ -677,7 +677,7 @@ export default function Home() {
         outCtx.drawImage(backgroundImageObj, 0, 0, outWidth, outHeight);
       }
       
-      // 应用形变，使用图片原始尺寸
+      // 应形变，使imageoriginal size
       drawPerspectiveImage(outCtx, img,
         0, 0, img.width, 0, 0, img.height, img.width, img.height,
         ptsRatio[0] * outWidth, ptsRatio[1] * outHeight,
@@ -686,11 +686,11 @@ export default function Home() {
         ptsRatio[6] * outWidth, ptsRatio[7] * outHeight
       );
       
-      // 免费用户加水印
+      // Free户加水印
       if (!isPro) {
         const fontSize = Math.max(12, Math.floor(outHeight * 0.025));
         outCtx.font = `${fontSize}px sans-serif`;
-        const text = '图片变形编辑器';
+        const text = 'Image Warp Editor';
         const tw = outCtx.measureText(text).width;
         const padX = fontSize * 0.5;
         const padY = fontSize * 0.3;
@@ -712,22 +712,22 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
     
-    alert(`✅ 搞定！${uploadedImages.length} 张图片已全部处理并下载。`);
+    alert(`✅ Done! ${uploadedImages.length}  image(s) processed and downloaded.`);
   };
 
-  // 重置形变
+  // Reset Distortion
   const handleReset = () => {
     updateCanvasSizeAndReset();
   };
 
-  // 一键预览所有图片
+  // Preview Allall images
   const handlePreviewAll = async () => {
-    if (uploadedImages.length === 0) return alert('请先上传需要拉伸的图片！');
-    if (useBackground && !backgroundImageObj) return alert('你开启了底图模式，请上传一张背景图！');
+    if (uploadedImages.length === 0) return alert('Please first Upload images to warp！');
+    if (useBackground && !backgroundImageObj) return alert('Background mode is enabled. Please upload a background image!');
     
     if (!canvasRef.current) return;
     
-    // 获取界面上归一化的控制点比例
+    // 获取界面上归one化的control pointsratio
     const previewCanvas = canvasRef.current;
     const getScale = (point, prop) => controlPoints[point][prop] / (prop === 'x' ? previewCanvas.width : previewCanvas.height);
     
@@ -738,7 +738,7 @@ export default function Home() {
       getScale('bottomRight', 'x'), getScale('bottomRight', 'y'),
     ];
 
-    // 以原图分辨率为基准高清导出
+    // based on original image resolutionHeightclear export
     let outWidth, outHeight;
     if (useBackground && backgroundImageObj) {
       outWidth = backgroundImageObj.width;
@@ -752,10 +752,10 @@ export default function Home() {
 
     console.log('Previewing', uploadedImages.length, 'images with control points ratio:', ptsRatio);
 
-    // 创建预览窗口
+    // create preview window
     const previewWindow = window.open('', '_blank', 'width=800,height=600');
-    previewWindow.document.write('<html><head><title>图片预览</title><style>body{font-family:Arial,sans-serif;margin:20px;}h1{text-align:center;color:#ff6b9d;}img{max-width:100%;height:auto;margin:10px 0;border:1px solid #ddd;} .preview-container{display:flex;flex-wrap:wrap;gap:10px;}.preview-item{flex:1 1 300px;}h3{margin-top:0;color:#666;}</style></head><body>');
-    previewWindow.document.write('<h1>📷 图片预览</h1>');
+    previewWindow.document.write('<html><head><title>imagepreview</title><style>body{font-family:Arial,sans-serif;margin:20px;}h1{text-align:center;color:#ff6b9d;}img{max-width:100%;height:auto;margin:10px 0;border:1px solid #ddd;} .preview-container{display:flex;flex-wrap:wrap;gap:10px;}.preview-item{flex:1 1 300px;}h3{margin-top:0;color:#666;}</style></head><body>');
+    previewWindow.document.write('<h1>📷 imagepreview</h1>');
     previewWindow.document.write('<div class="preview-container">');
 
     for (let i = 0; i < uploadedImages.length; i++) {
@@ -776,7 +776,7 @@ export default function Home() {
         outCtx.drawImage(backgroundImageObj, 0, 0, outWidth, outHeight);
       }
       
-      // 应用形变，使用图片原始尺寸
+      // 应形变，使imageoriginal size
       drawPerspectiveImage(outCtx, img,
         0, 0, img.width, 0, 0, img.height, img.width, img.height,
         ptsRatio[0] * outWidth, ptsRatio[1] * outHeight,
@@ -785,7 +785,7 @@ export default function Home() {
         ptsRatio[6] * outWidth, ptsRatio[7] * outHeight
       );
       
-      // 添加到预览窗口
+      // add to preview window
       const dataURL = outCanvas.toDataURL('image/png', 1.0);
       previewWindow.document.write(`<div class="preview-item"><h3>${imgData.name}</h3><img src="${dataURL}" alt="${imgData.name}"></div>`);
     }
@@ -794,7 +794,7 @@ export default function Home() {
     previewWindow.document.close();
   };
 
-  // 处理控制点拖拽开始
+  // processcontrol points拖拽开始
   const handleDragStart = (point, e) => {
     const startDragging = (e) => {
       let isDragging = true;
@@ -810,7 +810,7 @@ export default function Home() {
 
         if (!containerRef.current || !canvasRef.current) return;
 
-        // RAF 节流：每帧最多更新一次
+        // RAF 节流：每帧最多更新one
         if (controlPointsRafRef.current) return;
         controlPointsRafRef.current = requestAnimationFrame(() => {
           controlPointsRafRef.current = null;
@@ -822,11 +822,11 @@ export default function Home() {
         let x = e.clientX - containerRect.left - offsetX;
         let y = e.clientY - containerRect.top - offsetY;
 
-        // 限制在画布范围内
+        // constrain to canvas bounds
         x = Math.max(0, Math.min(x, canvas.width));
         y = Math.max(0, Math.min(y, canvas.height));
 
-        // 防止各点交叉（用 ref 避免闭包旧值）
+        // 防止各点交叉（ ref 避免闭包旧值）
         const cp = controlPointsRef.current;
         switch(dragPoint) {
           case 'topLeft':
@@ -847,7 +847,7 @@ export default function Home() {
             break;
         }
 
-        // 更新控制点
+        // update control points
         setControlPoints(prev => ({
           ...prev,
           [dragPoint]: { x, y }
@@ -875,7 +875,7 @@ export default function Home() {
     e.preventDefault();
   };
 
-  // 处理数值输入变化
+  // process数值输入变化
   const handleNumericInputChange = (point, axis, value) => {
     const numValue = parseInt(value) || 0;
     let clamped = numValue;
@@ -898,7 +898,7 @@ export default function Home() {
     }));
   };
 
-  // 监听图片对象变化，更新画布尺寸
+  // 监听image对象变化，update canvas size
   useEffect(() => {
     if (currentImageObj || (useBackground && backgroundImageObj)) {
       console.log('Image object changed, updating canvas size');
@@ -906,14 +906,14 @@ export default function Home() {
     }
   }, [currentImageObj, backgroundImageObj, useBackground]);
 
-  // 当控制点变化时，重新生成所有图片的预览
+  // 当control points变化时，regenerateall images的preview
   useEffect(() => {
-    // 拖动时跳过，等拖完再更新
+    // skip while dragging，update after drag
     if (isDraggingRef.current) return;
 
     const timer = setTimeout(async () => {
       if (uploadedImages.length > 0) {
-        // 批量更新，避免每个图片单独触发一次 state 更新
+        // 批量更新，避免每image单独触发one state 更新
         const updates = await Promise.all(
           uploadedImages.map(async (imgData) => {
             const previewSrc = await generatePreview(imgData);
@@ -930,7 +930,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [controlPoints, currentImageObj, backgroundImageObj, useBackground]);
 
-  // 监听控制点变化，重绘画布
+  // listen to control point changes，重绘canvas
   useEffect(() => {
     redrawCanvas();
   }, [controlPoints, currentImageObj, backgroundImageObj, useBackground, canvasSize]);
@@ -941,7 +941,7 @@ export default function Home() {
       <div className="min-h-screen bg-gradient-to-br from-pink-100 via-white to-pink-200 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-pink-300 border-t-pink-600 rounded-full animate-spin mb-4"></div>
-          <p className="text-pink-600">加载中...</p>
+          <p className="text-pink-600">Loading......</p>
         </div>
       </div>
     );
@@ -954,11 +954,11 @@ export default function Home() {
       {user ? (
         <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
           <div className="flex items-center gap-2 mr-auto">
-            <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium">定价</a>
+            <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium">Pricing</a>
             <span className="text-gray-300">|</span>
-            <a href="/faq" className="text-xs text-pink-500 hover:text-pink-600 font-medium">帮助</a>
+            <a href="/faq" className="text-xs text-pink-500 hover:text-pink-600 font-medium">Help</a>
             <span className="text-gray-300">|</span>
-            <a href="/profile" className="text-xs text-pink-500 hover:text-pink-600 font-medium">个人中心</a>
+            <a href="/profile" className="text-xs text-pink-500 hover:text-pink-600 font-medium">Profile</a>
           </div>
           <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
           <span className="text-sm text-gray-600">{user.email}</span>
@@ -971,8 +971,8 @@ export default function Home() {
         </div>
       ) : (
         <div className="flex items-center justify-end gap-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-b-xl shadow-sm">
-          <a href="/faq" className="text-xs text-gray-400 hover:text-gray-600 mr-auto">帮助</a>
-          <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium mr-4">升级 Pro</a>
+          <a href="/faq" className="text-xs text-gray-400 hover:text-gray-600 mr-auto">Help</a>
+          <a href="/pricing" className="text-xs text-pink-500 hover:text-pink-600 font-medium mr-4">upgrade Pro</a>
           <button
             onClick={handleGoogleLogin}
             className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
@@ -983,19 +983,19 @@ export default function Home() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            登录 Google
+            Login Google
           </button>
         </div>
       )}
-      <h1>🌸 批量图片拉伸编辑器 🌸</h1>
+      <h1>🌸 Batch Image Warp Editor 🌸</h1>
 
       <div className="card">
         <div className="upload-header">
-          <h3>📁 准备素材</h3>
+          <h3>📁 Prepare Materials</h3>
           <div className="upload-status">
             {uploadedImages.length > 0 
-              ? `已准备：<strong>${uploadedImages.length}</strong> 张需拉伸图片` 
-              : '当前未选择图片'
+              ? `Ready: <strong>${uploadedImages.length}</strong>  image(s) to warp` 
+              : 'No images selected'
             }
           </div>
         </div>
@@ -1015,7 +1015,7 @@ export default function Home() {
                 />
                 <span className="slider"></span>
               </label>
-              <label className="toggle-label" htmlFor="enableBgToggle">启用背景图底板</label>
+              <label className="toggle-label" htmlFor="enableBgToggle">Enable background image</label>
             </div>
             
             <div id="bgUploadSection" style={{ display: useBackground ? 'block' : 'none', height: 'calc(100% - 40px)' }}>
@@ -1034,13 +1034,13 @@ export default function Home() {
                 />
                 <div className="upload-icon">🖼️</div>
                 <div className="upload-text">
-                  <h4 id="bgUploadTitle">{backgroundImageObj ? '✅ 已加载背景图' : '上传背景底图'}</h4>
-                  <p>合成时将以背景尺寸为最终画布</p>
+                  <h4 id="bgUploadTitle">{backgroundImageObj ? '✅ Background loaded' : 'Upload background image'}</h4>
+                  <p>The background size will be used as the final canvas</p>
                 </div>
               </label>
             </div>
             <div id="bgDisabledHint" style={{ display: useBackground ? 'none' : 'block', color: '#ffb6c1', fontSize: '14px', marginTop: '10px' }}>
-              开启后可上传底图，前景图将合成在底图上。
+              Enable to upload a background. Foreground images will be composited on top.
             </div>
           </div>
 
@@ -1061,15 +1061,15 @@ export default function Home() {
               />
               <div className="upload-icon">🎀</div>
               <div className="upload-text">
-                <h4>上传需要拉伸的图片</h4>
-                <p>支持多选，批量应用相同形变</p>
+                <h4>Upload images to warp</h4>
+                <p>Multi-select supported, batch apply same distortion</p>
               </div>
             </label>
           </div>
         </div>
 
         <div className="thumbnail-container" id="thumbnailContainer" style={{ display: uploadedImages.length > 0 ? 'block' : 'none' }}>
-          <div className="thumbnail-title">已上传图片队列：</div>
+          <div className="thumbnail-title">Uploaded image queue:</div>
           <div className="thumbnails" id="thumbnailsBox">
             {uploadedImages.map(img => (
               <img 
@@ -1085,7 +1085,7 @@ export default function Home() {
       </div>
 
       <div className="card">
-        <h3>✨ 四角拉伸调节 ✨</h3>
+        <h3>✨ Corner Adjustment ✨</h3>
         <div className="adjustment-container">
           <div className="image-canvas-wrapper transparent-bg">
             <div className="canvas-container" id="canvasContainer" ref={containerRef} style={{ width: 'auto', height: 'auto' }}>
@@ -1125,10 +1125,10 @@ export default function Home() {
           
           <div className="numeric-controls">
             <div className="corner-control-group">
-              <div className="corner-title">↖️ 左上角</div>
+              <div className="corner-title">↖️ Top Left</div>
               <div className="coordinate-inputs">
                 <div className="input-group">
-                  <label htmlFor="tlX">X坐标:</label>
+                  <label htmlFor="tlX">X:</label>
                   <input 
                     type="number" 
                     id="tlX"
@@ -1141,7 +1141,7 @@ export default function Home() {
                   />
                 </div>
                 <div className="input-group">
-                  <label htmlFor="tlY">Y坐标:</label>
+                  <label htmlFor="tlY">Y:</label>
                   <input 
                     type="number" 
                     id="tlY"
@@ -1157,10 +1157,10 @@ export default function Home() {
             </div>
             
             <div className="corner-control-group">
-              <div className="corner-title">↗️ 右上角</div>
+              <div className="corner-title">↗️ Top Right</div>
               <div className="coordinate-inputs">
                 <div className="input-group">
-                  <label htmlFor="trX">X坐标:</label>
+                  <label htmlFor="trX">X:</label>
                   <input 
                     type="number" 
                     id="trX"
@@ -1173,7 +1173,7 @@ export default function Home() {
                   />
                 </div>
                 <div className="input-group">
-                  <label htmlFor="trY">Y坐标:</label>
+                  <label htmlFor="trY">Y:</label>
                   <input 
                     type="number" 
                     id="trY"
@@ -1189,10 +1189,10 @@ export default function Home() {
             </div>
             
             <div className="corner-control-group">
-              <div className="corner-title">↙️ 左下角</div>
+              <div className="corner-title">↙️ Bottom Left</div>
               <div className="coordinate-inputs">
                 <div className="input-group">
-                  <label htmlFor="blX">X坐标:</label>
+                  <label htmlFor="blX">X:</label>
                   <input 
                     type="number" 
                     id="blX"
@@ -1205,7 +1205,7 @@ export default function Home() {
                   />
                 </div>
                 <div className="input-group">
-                  <label htmlFor="blY">Y坐标:</label>
+                  <label htmlFor="blY">Y:</label>
                   <input 
                     type="number" 
                     id="blY"
@@ -1221,10 +1221,10 @@ export default function Home() {
             </div>
             
             <div className="corner-control-group">
-              <div className="corner-title">↘️ 右下角</div>
+              <div className="corner-title">↘️ Bottom Right</div>
               <div className="coordinate-inputs">
                 <div className="input-group">
-                  <label htmlFor="brX">X坐标:</label>
+                  <label htmlFor="brX">X:</label>
                   <input 
                     type="number" 
                     id="brX"
@@ -1237,7 +1237,7 @@ export default function Home() {
                   />
                 </div>
                 <div className="input-group">
-                  <label htmlFor="brY">Y坐标:</label>
+                  <label htmlFor="brY">Y:</label>
                   <input 
                     type="number" 
                     id="brY"
@@ -1254,18 +1254,18 @@ export default function Home() {
           </div>
           
           <p className="tip-text" id="dragTipText">
-            拖动四个角点或输入数值来精确拉伸图片形状（不可超出当前画布）
+            Drag the four corner points or enter values to precisely warp the image (cannot exceed canvas bounds)
           </p>
         </div>
       </div>
 
       <div className="card">
-        <h3>💖 批量导出 💖</h3>
-        <div className="tip-text">调节完成后，一键高清生成并下载所有合成图片</div>
-        {/* 显示要下载的图片列表 */}
+        <h3>💖 Batch Export 💖</h3>
+        <div className="tip-text">Once adjusted, generate and download all composited images in one click</div>
+        {/* display要下载的image列表 */}
         {uploadedImages.length > 0 && (
           <div className="mb-8">
-            <h3 className="text-center text-gray-700 font-medium mb-3">要下载的图片 ({uploadedImages.length})</h3>
+            <h3 className="text-center text-gray-700 font-medium mb-3">要下载的image ({uploadedImages.length})</h3>
             <div className="flex flex-wrap justify-center gap-3">
               {uploadedImages.map((img, index) => (
                 <div key={img.id} className="relative cursor-pointer" onClick={() => handlePreviewImage(img, index)}>
@@ -1292,7 +1292,7 @@ export default function Home() {
             className="action-btn preview-all-btn"
             onClick={handlePreviewAll}
           >
-            👁️ 一键预览
+            👁️ Preview All
           </a>
           <a 
             href="#" 
@@ -1300,7 +1300,7 @@ export default function Home() {
             className="action-btn download-all-btn"
             onClick={handleDownloadAll}
           >
-            📥 批量下载处理结果
+            📥 Download All Results
           </a>
           <a 
             href="#" 
@@ -1308,23 +1308,23 @@ export default function Home() {
             className="action-btn reset-btn"
             onClick={handleReset}
           >
-            🔄 重置形变
+            🔄 Reset Distortion
           </a>
         </div>
       </div>
 
-      {/* 升级悬浮条 - 免费用户可见 */}
+      {/* upgrade floating bar - Free户可见 */}
       {user && !isPro && (
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 px-4 shadow-lg z-50 flex items-center justify-center gap-4">
           <div className="text-sm">
-            🌸 今日已使用 <strong>{localStorage.getItem('today_uses') || '0'}</strong> 次
-            {parseInt(localStorage.getItem('today_uses') || '0') >= 10 ? '，次数已用完' : ''}
+            🌸 今日已使 <strong>{localStorage.getItem('today_uses') || '0'}</strong> 
+            {parseInt(localStorage.getItem('today_uses') || '0') >= 10 ? '，数已完' : ''}
           </div>
           <a
             href="/pricing"
             className="px-5 py-1.5 bg-white text-pink-600 text-sm font-bold rounded-full hover:shadow-lg transition-all"
           >
-            ⭐ 升级 Pro 解锁无限
+            ⭐ upgrade Pro 解锁无限
           </a>
         </div>
       )}
