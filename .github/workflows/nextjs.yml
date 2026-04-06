@@ -21,10 +21,9 @@ jobs:
         run: |
           npm install -g yarn
           yarn install
-          yarn add --dev typescript
 
       - name: Build Next.js
-        run: npm run build
+        run: yarn build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
