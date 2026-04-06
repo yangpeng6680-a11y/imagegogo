@@ -19,10 +19,10 @@ jobs:
           cache: false
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --registry=https://registry.npmjs.org/
+        run: npm ci
 
       - name: Build Next.js
-        run: node node_modules/next/dist/bin/next build
+        run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
 
