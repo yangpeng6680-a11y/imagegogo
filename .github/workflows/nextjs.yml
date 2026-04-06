@@ -21,6 +21,7 @@ jobs:
         run: |
           npm install -g yarn
           yarn install
+          yarn add --dev typescript @types/react @types/node
 
       - name: Build Next.js
         run: yarn build
